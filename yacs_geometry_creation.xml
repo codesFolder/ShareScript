@@ -1,0 +1,189 @@
+<?xml version='1.0' encoding='iso-8859-1' ?>
+<proc name="LPBF_Workflow_Simple">
+   <type name="string" kind="string"/>
+   <struct name="Engines/dataref">
+      <member name="ref" type="string"/>
+   </struct>
+   <type name="bool" kind="bool"/>
+   <sequence name="boolvec" content="bool"/>
+   <type name="double" kind="double"/>
+   <sequence name="dblevec" content="double"/>
+   <objref name="file" id="file"/>
+   <type name="int" kind="int"/>
+   <sequence name="intvec" content="int"/>
+   <struct name="stringpair">
+      <member name="name" type="string"/>
+      <member name="value" type="string"/>
+   </struct>
+   <sequence name="propvec" content="stringpair"/>
+   <objref name="pyobj" id="python:obj:1.0"/>
+   <sequence name="seqboolvec" content="boolvec"/>
+   <sequence name="seqdblevec" content="dblevec"/>
+   <sequence name="seqintvec" content="intvec"/>
+   <sequence name="seqpyobj" content="pyobj"/>
+   <sequence name="stringvec" content="string"/>
+   <sequence name="seqstringvec" content="stringvec"/>
+   <container name="DefaultContainer">
+      <property name="container_kind" value="Salome"/>
+      <property name="attached_on_cloning" value="0"/>
+      <property name="container_name" value="FactoryServer"/>
+   </container>
+   <datanode name="InputParameters">
+      <parameter name="num_layers" type="int">
+         <value><int>4</int></value>
+      </parameter>
+      <parameter name="total_height" type="double">
+         <value><double>25</double></value>
+      </parameter>
+      <parameter name="brep_file_path" type="string">
+         <value><string>C:/Users/DELL/Downloads/v2024/salome_meca/Box_1.brep</string></value>
+      </parameter>
+      <parameter name="output_script_path" type="string">
+         <value><string>C:/Users/DELL/Downloads/v2024/salome_meca/salome_partition_script.py</string></value>
+      </parameter>
+   </datanode>
+   <inline name="geomScriptGenerator">
+      <script><code><![CDATA[# -*- coding: utf-8 -*-
+# This YACS node takes parameters and WRITES a Python script file.
+# FINAL CORRECTED VERSION: Fixes the \\n to \n issue.
+
+print(f"--- YACS: Generating Salome Script ---")
+print(f"Target file: {output_script_path}")
+print(f"Number of divisions: {num_layers}")
+
+# Use the input ports instead of input() or hardcoded values.
+num_divisions = num_layers
+brep_path_for_salome = brep_file_path
+
+# --- This is the template for the script to be generated ---
+script_content = f"""#!/usr/bin/env python
+#
+# This file was generated automatically by a YACS workflow.
+#
+import sys
+import salome
+salome.salome_init()
+import GEOM
+from salome.geom import geomBuilder
+geompy = geomBuilder.New()
+
+# --- GEOMETRY DEFINITION ---
+O = geompy.MakeVertex(0, 0, 0)
+OX = geompy.MakeVectorDXDYDZ(1, 0, 0)
+OY = geompy.MakeVectorDXDYDZ(0, 1, 0)
+OZ = geompy.MakeVectorDXDYDZ(0, 0, 1)
+
+# Import the base geometry using the path provided by YACS
+Box_1_brep_1 = geompy.ImportBREP(r"{brep_path_for_salome}")
+
+# Create the initial plane that will be copied and translated
+Plane_1 = geompy.MakePlaneLCS(None, 2000, 1)
+
+# --- CREATE TRANSLATED PLANES ---
+"""
+
+# --- LOOP TO CREATE TRANSLATION COMMANDS ---
+layer_thickness = total_height / num_layers
+translation_variable_names = []
+for i in range(1, num_divisions):
+    z_position = i * layer_thickness
+    variable_name = f"Translation_{i}"
+    # THE FIX IS HERE: Changed '\\n' to '\n' to create a real newline in the output file.
+    script_content += f"{variable_name} = geompy.MakeTranslation(Plane_1, 0, 0, {z_position})\n"
+    translation_variable_names.append(variable_name)
+
+# --- PARTITION AND FOOTER ---
+translations_list_str = ", ".join(translation_variable_names)
+
+script_content += f"""
+# --- PARTITION THE GEOMETRY ---
+Partition_1 = geompy.MakePartition([Box_1_brep_1], [{translations_list_str}], [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+
+# --- ADD OBJECTS TO STUDY ---
+geompy.addToStudy( O, 'O' )
+geompy.addToStudy( OX, 'OX' )
+geompy.addToStudy( OY, 'OY' )
+geompy.addToStudy( OZ, 'OZ' )
+geompy.addToStudy( Box_1_brep_1, 'Box_1.brep_1' )
+geompy.addToStudy( Plane_1, 'Plane_1' )
+"""
+for var_name in translation_variable_names:
+    # THE FIX IS HERE: Also changed '\\n' to '\n' here.
+    script_content += f"geompy.addToStudy( {var_name}, '{var_name}' )\n"
+
+script_content += f"""geompy.addToStudy( Partition_1, 'Partition_1' )
+
+if salome.sg.hasDesktop():
+  salome.sg.updateObjBrowser()
+
+print("\\nGenerated geometry script finished execution.")
+"""
+
+# --- Write the generated content to the output file ---
+try:
+    with open(output_script_path, "w") as f:
+        f.write(script_content)
+    print(f"SUCCESS: Created the Salome script file: {output_script_path}")
+except Exception as e:
+    print(f"ERROR: Could not write to file. {e}")
+    raise
+
+# Pass the path to the output port
+generated_script_path = output_script_path
+]]></code></script>
+      <load container="DefaultContainer"/>
+      <inport name="num_layers" type="int"/>
+      <inport name="total_height" type="double"/>
+      <inport name="brep_file_path" type="string"/>
+      <inport name="output_script_path" type="string"/>
+      <outport name="generated_script_path" type="string"/>
+   </inline>
+   <inline name="geomScriptExecutor">
+      <script><code><![CDATA[# -*- coding: utf-8 -*-
+# This YACS node takes a file path as input and executes that Python script.
+import os
+
+print(f"--- YACS: Executing the generated script ---")
+print(f"Script to run: {script_to_run}")
+
+if not os.path.exists(script_to_run):
+    print(f"FATAL ERROR: The script file '{script_to_run}' was not found. Cannot execute.")
+    raise FileNotFoundError
+
+# Read the content of the generated script and execute it
+with open(script_to_run, 'r') as f:
+    script_code = f.read()
+
+# exec() runs the code in the current SALOME environment
+exec(script_code, globals())
+]]></code></script>
+      <load container="DefaultContainer"/>
+      <inport name="script_to_run" type="string"/>
+   </inline>
+   <control> <fromnode>InputParameters</fromnode> <tonode>geomScriptGenerator</tonode> </control>
+   <control> <fromnode>geomScriptGenerator</fromnode> <tonode>geomScriptExecutor</tonode> </control>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>num_layers</fromport>
+      <tonode>geomScriptGenerator</tonode> <toport>num_layers</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>total_height</fromport>
+      <tonode>geomScriptGenerator</tonode> <toport>total_height</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>brep_file_path</fromport>
+      <tonode>geomScriptGenerator</tonode> <toport>brep_file_path</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>output_script_path</fromport>
+      <tonode>geomScriptGenerator</tonode> <toport>output_script_path</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>geomScriptGenerator</fromnode> <fromport>generated_script_path</fromport>
+      <tonode>geomScriptExecutor</tonode> <toport>script_to_run</toport>
+   </datalink>
+   <presentation name="geomScriptGenerator" x="266" y="182.5" width="158" height="144" expanded="1" expx="266" expy="182.5" expWidth="158" expHeight="144" shownState="0"/>
+   <presentation name="geomScriptExecutor" x="481" y="353" width="158" height="63" expanded="1" expx="481" expy="353" expWidth="158" expHeight="63" shownState="0"/>
+   <presentation name="InputParameters" x="4" y="60" width="158" height="144" expanded="1" expx="4" expy="60" expWidth="158" expHeight="144" shownState="0"/>
+   <presentation name="__ROOT__" x="0" y="0" width="643" height="420" expanded="1" expx="0" expy="0" expWidth="643" expHeight="420" shownState="0"/>
+</proc>
