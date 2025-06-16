@@ -1,0 +1,191 @@
+<?xml version='1.0' encoding='iso-8859-1' ?>
+<proc name="LPBF_Workflow_Step4">
+   <type name="string" kind="string"/>
+   <struct name="Engines/dataref">
+      <member name="ref" type="string"/>
+   </struct>
+   <type name="bool" kind="bool"/>
+   <sequence name="boolvec" content="bool"/>
+   <type name="double" kind="double"/>
+   <sequence name="dblevec" content="double"/>
+   <objref name="file" id="file"/>
+   <type name="int" kind="int"/>
+   <sequence name="intvec" content="int"/>
+   <struct name="stringpair">
+      <member name="name" type="string"/>
+      <member name="value" type="string"/>
+   </struct>
+   <sequence name="propvec" content="stringpair"/>
+   <objref name="pyobj" id="python:obj:1.0"/>
+   <sequence name="seqboolvec" content="boolvec"/>
+   <sequence name="seqdblevec" content="dblevec"/>
+   <sequence name="seqintvec" content="intvec"/>
+   <sequence name="seqpyobj" content="pyobj"/>
+   <sequence name="stringvec" content="string"/>
+   <sequence name="seqstringvec" content="stringvec"/>
+   <container name="DefaultContainer">
+      <property name="container_kind" value="Salome"/>
+      <property name="attached_on_cloning" value="0"/>
+      <property name="container_name" value="FactoryServer"/>
+   </container>
+   <datanode name="InputParameters">
+      <parameter name="num_layers" type="int">
+         <value><int>100</int></value>
+      </parameter>
+      <parameter name="total_height" type="double">
+         <value><double>25</double></value>
+      </parameter>
+      <parameter name="brep_file_path" type="string">
+         <value><string>C:/Users/DELL/Downloads/v2024/salome_meca/Box_1.brep</string></value>
+      </parameter>
+      <parameter name="mesh_size" type="double">
+         <value><double>0.5</double></value>
+      </parameter>
+      <parameter name="output_med_path" type="string">
+         <value><string>C:/Users/DELL/Downloads/v2024/salome_meca/MyFinalMesh.med</string></value>
+      </parameter>
+   </datanode>
+   <inline name="geomAndMeshNode">
+      <script><code><![CDATA[# -*- coding: utf-8 -*-
+#
+# This script combines the full workflow:
+# 1. Creates partitioned geometry from a BREP file.
+# 2. Programmatically creates groups for layers and the bottom face.
+# 3. Meshes the geometry using the logic from the user's dumped script.
+# 4. Exports the final mesh to a .med file.
+#
+import salome
+import GEOM
+from salome.geom import geomBuilder
+import SMESH
+from salome.smesh import smeshBuilder
+import SALOMEDS
+
+# === PART 1: GEOMETRY CREATION (Proven Method) ===
+print("--- Starting Geometry and Meshing Node ---")
+geompy = geomBuilder.New()
+
+print(f"Importing base geometry from: {brep_file_path}")
+try:
+    Box_1_brep_1 = geompy.ImportBREP(brep_file_path)
+except Exception as e:
+    print(f"FATAL ERROR: Could not import BREP file: {e}")
+    raise
+
+bbox = geompy.BoundingBox(Box_1_brep_1)
+plane_size = max(bbox[1]-bbox[0], bbox[3]-bbox[2]) * 2
+Plane_1 = geompy.MakePlaneLCS(None, plane_size, 1)
+
+layer_thickness = total_height / num_layers
+translation_objects = []
+for i in range(1, num_layers):
+    z_position = i * layer_thickness
+    translation_objects.append(geompy.MakeTranslation(Plane_1, 0, 0, z_position))
+
+print("Partitioning the geometry...")
+Partition_1 = geompy.MakePartition([Box_1_brep_1], translation_objects, [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+geompy.addToStudy(Partition_1, 'Partitioned_Geometry')
+
+# === PART 2: PROGRAMMATIC GROUP CREATION (The necessary automated part) ===
+print("Programmatically creating groups...")
+all_solids = geompy.SubShapeAll(Partition_1, geompy.ShapeType["SOLID"])
+
+# Create a list of tuples: (z_center, solid_object)
+solids_with_z = [(geompy.BasicProperties(s)[2], s) for s in all_solids]
+
+# --- THE FIX IS ON THIS LINE ---
+# CORRECTED: Use a 'key' to tell sorted() to ONLY look at the first element
+# of the tuple (the Z-coordinate) for sorting.
+sorted_solids = sorted(solids_with_z, key=lambda item: item[0])
+
+layer_geom_groups = []
+for i, (z_center, solid) in enumerate(sorted_solids):
+    layer_name = f"layer_{i+1}"
+    group = geompy.CreateGroup(Partition_1, geompy.ShapeType["SOLID"])
+    geompy.UnionIDs(group, [geompy.GetSubShapeID(Partition_1, solid)])
+    geompy.addToStudyInFather(Partition_1, group, layer_name)
+    layer_geom_groups.append(group)
+    print(f"Created geometry group '{layer_name}'")
+
+all_faces = geompy.SubShapeAll(Partition_1, geompy.ShapeType["FACE"])
+min_z_bbox = bbox[4]
+bottom_face_geom = next((f for f in all_faces if abs(geompy.BasicProperties(f)[2] - min_z_bbox) < 1e-6), None)
+
+if bottom_face_geom:
+    bottom_geom_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["FACE"])
+    geompy.UnionIDs(bottom_geom_group, [geompy.GetSubShapeID(Partition_1, bottom_face_geom)])
+    geompy.addToStudyInFather(Partition_1, bottom_geom_group, 'bottom')
+    print("Created geometry group 'bottom'")
+else:
+    raise ValueError("Could not find the bottom face geometry.")
+
+# === PART 3: MESHING (Based on user's dumped script) ===
+print("Starting meshing process...")
+smesh = smeshBuilder.New()
+Mesh_1 = smesh.Mesh(Partition_1, 'Final_Mesh')
+
+# Set meshing algorithms (from dumped file)
+Regular_1D = Mesh_1.Segment()
+# We make the mesh size a parameter from the input node
+Local_Length_1 = Regular_1D.LocalLength(mesh_size, None, 1e-07)
+Quadrangle_2D = Mesh_1.Quadrangle(algo=smeshBuilder.QUADRANGLE)
+Hexa_3D = Mesh_1.Hexahedron(algo=smeshBuilder.Hexa)
+
+print("Creating mesh groups from geometry groups...")
+# Create mesh groups from our programmatically created geometry groups
+bottom_mesh_group = Mesh_1.GroupOnGeom(bottom_geom_group, 'bottom', SMESH.FACE)
+
+for i, geom_group in enumerate(layer_geom_groups):
+    Mesh_1.GroupOnGeom(geom_group, f'layer_{i+1}', SMESH.VOLUME)
+
+print("Computing the mesh...")
+isDone = Mesh_1.Compute()
+if not isDone:
+    raise RuntimeError("Mesh computation failed.")
+print("Mesh computation successful.")
+
+# === PART 4: EXPORT MESH ===
+print(f"Exporting mesh to: {output_med_path}")
+try:
+    Mesh_1.ExportMED(output_med_path, 0, SMESH.MED_V2_2, 1, None, 1)
+    print("Export successful.")
+except Exception as e:
+    print(f"ERROR: Could not export MED file: {e}")
+    raise
+
+# Pass the final MED file path to the output port
+final_med_file = output_med_path
+]]></code></script>
+      <load container="DefaultContainer"/>
+      <inport name="num_layers" type="int"/>
+      <inport name="total_height" type="double"/>
+      <inport name="brep_file_path" type="string"/>
+      <inport name="mesh_size" type="double"/>
+      <inport name="output_med_path" type="string"/>
+      <outport name="final_med_file" type="string"/>
+   </inline>
+   <control> <fromnode>InputParameters</fromnode> <tonode>geomAndMeshNode</tonode> </control>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>num_layers</fromport>
+      <tonode>geomAndMeshNode</tonode> <toport>num_layers</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>total_height</fromport>
+      <tonode>geomAndMeshNode</tonode> <toport>total_height</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>brep_file_path</fromport>
+      <tonode>geomAndMeshNode</tonode> <toport>brep_file_path</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>mesh_size</fromport>
+      <tonode>geomAndMeshNode</tonode> <toport>mesh_size</toport>
+   </datalink>
+   <datalink control="false">
+      <fromnode>InputParameters</fromnode> <fromport>output_med_path</fromport>
+      <tonode>geomAndMeshNode</tonode> <toport>output_med_path</toport>
+   </datalink>
+   <presentation name="geomAndMeshNode" x="421" y="193" width="158" height="171" expanded="1" expx="421" expy="193" expWidth="158" expHeight="171" shownState="0"/>
+   <presentation name="InputParameters" x="6" y="34" width="158" height="171" expanded="1" expx="6" expy="34" expWidth="158" expHeight="171" shownState="0"/>
+   <presentation name="__ROOT__" x="0" y="0" width="583" height="368" expanded="1" expx="0" expy="0" expWidth="583" expHeight="368" shownState="0"/>
+</proc>
