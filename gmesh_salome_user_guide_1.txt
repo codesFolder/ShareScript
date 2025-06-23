@@ -1,0 +1,364 @@
+Gmesh
+Python package GMSHPluginBuilder defines several classes, destined for creation of the 2D and 3D meshes.
+
+Documentation for GMSHPlugin package is available in linear form grouped by classes, declared in the GMSHPluginBuilder.py file.
+
+Below you can see an example of usage of the GMSHPluginBuilder package for mesh generation:
+
+
+Example of 2d and 3d mesh generation with GMSH:
+    1 # -*- coding: iso-8859-1 -*-
+    2 
+    3 import salome
+    4 
+    5 salome.salome_init()
+    6 
+    7 from salome.geom import geomBuilder
+    8 geompy = geomBuilder.New()
+    9 
+   10 from salome.smesh import smeshBuilder
+   11 smesh = smeshBuilder.New()
+   12 
+   13 from salome.GMSHPlugin import GMSHPluginBuilder
+   14 
+   15 # create a box
+   16 Box = geompy.MakeBoxDXDYDZ(10, 10, 10)
+   17 geompy.addToStudy( Box, 'Box' )
+   18 
+   19 # 1. Create a 2D mesh on the box with GMSH_2D algorithm
+   20 Mesh_2D = smesh.Mesh(Box, "Box : 2D mesh by GMSH_2D")
+   21 # create a Gmsh 2D algorithm for solids
+   22 Algo_2D = Mesh_2D.Triangle(algo=smeshBuilder.GMSH_2D)
+   23 # define hypotheses
+   24 Param_2D = Algo_2D.Parameters()
+   25 # define algorithm
+   26 Param_2D.Set2DAlgo( 0 )
+   27 # define min element
+   28 Param_2D.SetMinSize( 0 )
+   29 # define max element
+   30 Param_2D.SetMaxSize( 2 )
+   31 
+   32 # 2. Create a 3D mesh on the box with GMSH_3D algorithm
+   33 Mesh_3D = smesh.Mesh(Box, "Box : 3D mesh by GMSH_3D")
+   34 # create a Gmsh 3D algorithm for solids
+   35 Algo_3D = Mesh_3D.Tetrahedron(algo=smeshBuilder.GMSH)
+   36 # define hypotheses
+   37 Param_3D = Algo_3D.Parameters()
+   38 # define algorithms
+   39 Param_3D.Set2DAlgo( 0 )
+   40 Param_3D.SetIs2d( 0 )
+   41 Param_3D.Set3DAlgo( 0 )
+   42 # define min element size
+   43 Param_3D.SetMinSize( 0 )
+   44 # define max element size
+   45 Param_3D.SetMaxSize( 2 )
+   46 
+   47 # compute the meshes
+   48 Mesh_2D.Compute()
+   49 Mesh_3D.Compute()
+   50 
+   51 if salome.sg.hasDesktop():
+   52   salome.sg.updateObjBrowser()
+
+
+Public Member Functions
+def 	__init__
+ 
+def 	Parameters
+ 	Defines hypothesis having several parameters. More...
+ 
+Data Fields
+ 	params
+ 
+Static Public Attributes
+string 	meshMethod = "Tetrahedron"
+ 
+ 	algoType = GMSH
+ 
+Detailed Description
+Base of all GMSH algorithms.
+
+Constructor & Destructor Documentation
+def __init__	(	 	self,
+ 	mesh,
+ 	geom = 0 
+)		
+References Mesh_Algorithm.Create().
+
+Member Function Documentation
+def Parameters	(	 	self)		
+Defines hypothesis having several parameters.
+
+References GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, and GMSH_Algorithm.params.
+
+Field Documentation
+string meshMethod = "Tetrahedron"
+static
+algoType = GMSH
+static
+params
+
+GMSH_2D_Algorithm Class Reference
+Inheritance graph
+Public Member Functions
+def 	__init__
+ 	Private constructor. More...
+ 
+def 	Parameters
+ 	Defines hypothesis having several parameters. More...
+ 
+Data Fields
+ 	params
+ 
+Static Public Attributes
+string 	meshMethod = "Triangle"
+ 
+ 	algoType = GMSH_2D
+ 
+Constructor & Destructor Documentation
+def __init__	(	 	self,
+ 	mesh,
+ 	geom = 0 
+)		
+Private constructor.
+
+Member Function Documentation
+def Parameters	(	 	self)		
+inherited
+Defines hypothesis having several parameters.
+
+References GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, and GMSH_Algorithm.params.
+
+Field Documentation
+string meshMethod = "Triangle"
+static
+algoType = GMSH_2D
+static
+params
+inherited
+
+GMSH_3D_Algorithm Class Reference
+Inheritance graph
+Public Member Functions
+def 	__init__
+ 	Private constructor. More...
+ 
+def 	Parameters
+ 	Defines hypothesis having several parameters. More...
+ 
+Data Fields
+ 	params
+ 
+Static Public Attributes
+string 	meshMethod = "Tetrahedron"
+ 
+ 	algoType = GMSH_3D
+ 
+Constructor & Destructor Documentation
+def __init__	(	 	self,
+ 	mesh,
+ 	geom = 0 
+)		
+Private constructor.
+
+Member Function Documentation
+def Parameters	(	 	self)		
+inherited
+Defines hypothesis having several parameters.
+
+References GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.algoType, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, GMSH_Algorithm.params, and GMSH_Algorithm.params.
+
+Field Documentation
+string meshMethod = "Tetrahedron"
+static
+algoType = GMSH_3D
+static
+params
+inherited
+
+---
+
+Mesh_Algorithm Class Reference
+Public Member Functions
+def 	__init__
+ 
+def 	FindHypothesis
+ 
+def 	FindAlgorithm
+ 
+def 	GetSubMesh
+ 
+def 	GetAlgorithm
+ 
+def 	GetCompatibleHypothesis
+ 
+def 	GetName
+ 
+def 	SetName
+ 
+def 	GetId
+ 
+def 	Create
+ 
+def 	Assign
+ 
+def 	CompareHyp
+ 
+def 	CompareEqualHyp
+ 
+def 	Hypothesis
+ 
+def 	MainShapeEntry
+ 
+def 	ViscousLayers
+ 
+def 	ViscousLayers2D
+ 
+def 	ReversedEdgeIndices
+ 
+Data Fields
+ 	mesh
+ 
+ 	geom
+ 
+ 	subm
+ 
+ 	algo
+ 
+Constructor & Destructor Documentation
+def __init__	(	 	self)		
+Member Function Documentation
+def FindHypothesis	(	 	self,
+ 	hypname,
+ 	args,
+ 	CompareMethod,
+ 	smeshpyD 
+)		
+def FindAlgorithm	(	 	self,
+ 	algoname,
+ 	smeshpyD 
+)		
+def GetSubMesh	(	 	self)		
+References Mesh_Algorithm.subm.
+
+def GetAlgorithm	(	 	self)		
+References Mesh_Algorithm.algo.
+
+def GetCompatibleHypothesis	(	 	self)		
+References Mesh_Algorithm.algo.
+
+def GetName	(	 	self)		
+References Mesh_Algorithm.algo.
+
+def SetName	(	 	self,
+ 	name 
+)		
+References Mesh_Algorithm.algo.
+
+def GetId	(	 	self)		
+def Create	(	 	self,
+ 	mesh,
+ 	geom,
+ 	hypo,
+ 	so = "libStdMeshersEngine.so" 
+)		
+References Mesh_Algorithm.algo, Mesh_Algorithm.Assign(), and Mesh_Algorithm.FindAlgorithm().
+
+def Assign	(	 	self,
+ 	algo,
+ 	mesh,
+ 	geom 
+)		
+References Mesh_Algorithm.algo, Mesh_Algorithm.algo, Mesh_Algorithm.geom, Mesh_Algorithm.geom, Mesh_Algorithm.mesh, and Mesh_Algorithm.subm.
+
+def CompareHyp	(	 	self,
+ 	hyp,
+ 	args 
+)		
+def CompareEqualHyp	(	 	self,
+ 	hyp,
+ 	args 
+)		
+References Mesh_Algorithm.Hypothesis().
+
+def Hypothesis	(	 	self,
+ 	hyp,
+ 	args = [],
+ 	so = "libStdMeshersEngine.so",
+ 	UseExisting = 0,
+ 	CompareMethod = "",
+ 	toAdd = True 
+)		
+References Mesh_Algorithm.CompareHyp(), Mesh_Algorithm.FindHypothesis(), Mesh_Algorithm.geom, Mesh_Algorithm.geom, Mesh_Algorithm.GetName(), and Mesh_Algorithm.GetName().
+
+def MainShapeEntry	(	 	self)		
+References Mesh_Algorithm.mesh, and Mesh_Algorithm.ViscousLayers().
+
+def ViscousLayers	(	 	self,
+ 	thickness,
+ 	numberOfLayers,
+ 	stretchFactor,
+ 	faces = [],
+ 	isFacesToIgnore = True,
+ 	extrMethod = StdMeshers.SURF_OFFSET_SMOOTH,
+ 	groupName = "" 
+)		
+References Mesh_Algorithm.algo, Mesh_Algorithm.geom, Mesh_Algorithm.GetCompatibleHypothesis(), Mesh_Algorithm.Hypothesis(), and Mesh_Algorithm.ViscousLayers2D().
+
+def ViscousLayers2D	(	 	self,
+ 	thickness,
+ 	numberOfLayers,
+ 	stretchFactor,
+ 	edges = [],
+ 	isEdgesToIgnore = True,
+ 	groupName = "" 
+)		
+References Mesh_Algorithm.algo, Mesh_Algorithm.geom, Mesh_Algorithm.GetCompatibleHypothesis(), and Mesh_Algorithm.Hypothesis().
+
+def ReversedEdgeIndices	(	 	self,
+ 	reverseList 
+)		
+References Mesh_Algorithm.geom.
+
+Field Documentation
+mesh
+geom
+subm
+algo
+
+GMSHPluginBuilder Namespace Reference
+Python API for the GMSH meshing plug-in module. More...
+
+Data Structures
+class  	GMSH_Algorithm
+ 	Base of all GMSH algorithms. More...
+ 
+class  	GMSH_2D_Algorithm
+ 
+class  	GMSH_3D_Algorithm
+ 
+Variables
+int 	noGMSHPlugin = 0
+ 
+string 	GMSH = "GMSH"
+ 
+string 	GMSH_3D = "GMSH_3D"
+ 
+string 	GMSH_2D = "GMSH_2D"
+ 
+Detailed Description
+Python API for the GMSH meshing plug-in module.
+
+Variable Documentation
+int noGMSHPlugin = 0
+string GMSH = "GMSH"
+string GMSH_3D = "GMSH_3D"
+string GMSH_2D = "GMSH_2D"
+
+
+
+
+
+
+
+
