@@ -1,0 +1,1799 @@
+Partition
+    1 # Partition
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p0   = geompy.MakeVertex(  0.,   0.,   0.)
+   12 p200 = geompy.MakeVertex(200., 200., 200.)
+   13 pz   = geompy.MakeVertex(  0.,   0., 100.)
+   14 
+   15 # create a vector
+   16 vxyz = geompy.MakeVectorDXDYDZ(100., 100., 100.)
+   17 
+   18 # create a box from two points
+   19 box = geompy.MakeBoxTwoPnt(p0, p200)
+   20 
+   21 # create a plane
+   22 trimsize  = 500.
+   23 plane = geompy.MakePlane(pz, vxyz, trimsize)
+   24 
+   25 # create partition
+   26 partition = geompy.MakePartition([box], [plane])
+   27 
+   28 # add objects in the study
+   29 id_box = geompy.addToStudy(box,"Box")
+   30 id_plane = geompy.addToStudy(plane,"Plane")
+   31 id_partition = geompy.addToStudy(partition,"Partition")
+   32 
+   33 # display the partition objects and the plane
+   34 gg.createAndDisplayGO(id_box)
+   35 gg.setDisplayMode(id_box,1)
+   36 gg.createAndDisplayGO(id_plane)
+   37 gg.setDisplayMode(id_plane,1)
+   38 gg.createAndDisplayGO(id_partition)
+Download this script
+
+
+
+Archimede
+    1 # Archimede
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p0   = geompy.MakeVertex(  0.,   0.,   0.)
+   12 p200 = geompy.MakeVertex(200., 200., 200.)
+   13 
+   14 # create a box from two points
+   15 box = geompy.MakeBoxTwoPnt(p0, p200)
+   16 
+   17 # perform an Archimede operation on the selected shape with selected parameters
+   18 weight  = 1000000.
+   19 waterdensity = 1.
+   20 meshingdeflection = 0.01
+   21 archimede  = geompy.Archimede(box, weight, waterdensity, meshingdeflection)
+   22 
+   23 # add objects in the study
+   24 id_box = geompy.addToStudy(box,"Box")
+   25 id_archimede = geompy.addToStudy(archimede,"Archimede")
+   26 
+   27 # display the box and the result of Archimede operation
+   28 gg.createAndDisplayGO(id_box)
+   29 gg.setDisplayMode(id_box,1)
+   30 gg.createAndDisplayGO(id_archimede)
+   31 gg.setDisplayMode(id_archimede,1) 
+Download this script
+
+
+
+Restore presentation parameters and sub-shapes
+    1 # Restore presentation parameters and sub-shapes
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 import SALOMEDS
+    9 
+   10 # create a box and a cylinder
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 cyl = geompy.MakeCylinderRH(100, 300)
+   13 
+   14 # create translated box
+   15 vec = geompy.MakeVectorDXDYDZ(100, 50, 0)
+   16 tra = geompy.MakeTranslationVector(box, vec)
+   17 
+   18 # create partition objects
+   19 partition1 = geompy.MakePartition([box, cyl])
+   20 partition2 = geompy.MakePartition([box], [cyl])
+   21 partition3 = geompy.MakePartition([box], [tra])
+   22 
+   23 # set colours
+   24 box.SetColor(SALOMEDS.Color(1,0,0))
+   25 cyl.SetColor(SALOMEDS.Color(0,1,0))
+   26 
+   27 # add objects in the study
+   28 geompy.addToStudy(box, "Box")
+   29 geompy.addToStudy(cyl, "Cylinder")
+   30 geompy.addToStudy(vec, "Vector")
+   31 geompy.addToStudy(tra, "Translation")
+   32 geompy.addToStudy(partition1, "Partition_1")
+   33 geompy.addToStudy(partition2, "Partition_2")
+   34 geompy.addToStudy(partition3, "Partition_3")
+   35 
+   36 # Restore presentation parameters and sub-shapes
+   37 # different methods can be used to find the sub-shapes in the result:
+   38 # GetInPlace, GetSame, GetInPlaceByHistory, GetShapesOnShape.
+   39 # By default, GetInPlace method is used (GEOM.FSM_GetInPlace)
+   40 geompy.RestoreSubShapes(partition1)
+   41 
+   42 geompy.RestoreSubShapes(partition2, [], GEOM.FSM_GetInPlace)
+   43 
+   44 # The list of arguments can be used to avoid restoring all arguments,
+   45 # but restore only the passed.
+   46 geompy.RestoreSubShapes(partition3, [tra], GEOM.FSM_GetInPlaceByHistory)
+   47 
+   48 # To find sub-shapes in a transformed shape only one method could be
+   49 # used: pass GEOM.FSM_Transformed for that.
+   50 # True passed for the last argument, means that the transformed shape
+   51 # will inherit colour and sub-shapes from its first argument (see above
+   52 # MakeTranslation).
+   53 geompy.RestoreSubShapes(tra, [], GEOM.FSM_Transformed, True)
+   54 
+   55 # Also we could do this directly with method addToStudy:
+   56 partition4 = geompy.MakePartition([box, tra])
+   57 geompy.addToStudy(partition4, "Partition_4", True, [],
+   58                   GEOM.FSM_GetInPlaceByHistory, False)
+Download this script
+
+
+
+Get shared shapes
+    1 # Get shared sub-shapes
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 import SALOMEDS
+    9 
+   10 # create a box and partigion it by two planes
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 p = geompy.MakeVertex(100, 100, 100)
+   13 v1 = geompy.MakeVectorDXDYDZ(1, 1, 0)
+   14 v2 = geompy.MakeVectorDXDYDZ(1, -1, 0)
+   15 pln1 = geompy.MakePlane(p, v1, 2000)
+   16 pln2 = geompy.MakePlane(p, v2, 2000)
+   17 partition = geompy.MakePartition([box], [pln1, pln2])
+   18 
+   19 # extract solids from result of partition
+   20 solids = geompy.SubShapeAllSorted(partition, geompy.ShapeType['SOLID'])
+   21 
+   22 # get shared shapes from the partition (compound of 4 solids)
+   23 # a) faces that are shared by all 4 solids (0 found)
+   24 pF_T = geompy.GetSharedShapesMulti(partition, geompy.ShapeType['FACE'])
+   25 # b) faces that are shared by any couple of solids (4 found)
+   26 pF_F = geompy.GetSharedShapesMulti(partition, geompy.ShapeType['FACE'], False)
+   27 # c) edges that are shared by all 4 solids (1 found)
+   28 pE_T = geompy.GetSharedShapesMulti(partition, geompy.ShapeType['EDGE'])
+   29 # d) edges that are shared by any couple of solids (13 found)
+   30 pE_F = geompy.GetSharedShapesMulti(partition, geompy.ShapeType['EDGE'], False)
+   31 
+   32 # get shared shapes from the list of solids
+   33 # a) faces that are shared by all 4 solids (0 found)
+   34 sF_T = geompy.GetSharedShapesMulti(solids, geompy.ShapeType['FACE'])
+   35 # b) faces that are shared by 1st/2nd, 1st/3rd and 1st/4th solids (2 found)
+   36 sF_F = geompy.GetSharedShapesMulti(solids, geompy.ShapeType['FACE'], False)
+   37 # c) edges that are shared by all 4 solids (1 found)
+   38 sE_T = geompy.GetSharedShapesMulti(solids, geompy.ShapeType['EDGE'])
+   39 # d) edges that are shared by 1st/2nd, 1st/3rd and 1st/4th solids (7 found)
+   40 sE_F = geompy.GetSharedShapesMulti(solids, geompy.ShapeType['EDGE'], False)
+
+Fuse
+    1 # Fuse
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(25, 55, 0)
+   12 p2 = geompy.MakeVertex( 0,  0, 0)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 35
+   17 radius1 = 20
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a sphere
+   21 sphere = geompy.MakeSphereR(40)
+   22 
+   23 # create a box
+   24 box = geompy.MakeBoxDXDYDZ(80, 80, 80)
+   25 
+   26 # fuse
+   27 fuse1 = geompy.MakeFuse(cylinder, sphere)
+   28 fuse2 = geompy.MakeBoolean(cylinder, sphere, 3)
+   29 fuse3 = geompy.MakeFuseList([cylinder, sphere, box])
+   30 
+   31 # add objects in the study
+   32 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   33 id_sphere = geompy.addToStudy(sphere, "Sphere")
+   34 id_box = geompy.addToStudy(box, "Box")
+   35 id_fuse1 = geompy.addToStudy(fuse1, "Fuse_1")
+   36 id_fuse2 = geompy.addToStudy(fuse2, "Fuse_2")
+   37 id_fuse3 = geompy.addToStudy(fuse3, "Fuse_3")
+   38 
+   39 # display results
+   40 gg.createAndDisplayGO(id_cylinder)
+   41 gg.setDisplayMode(id_cylinder,1)
+   42 gg.createAndDisplayGO(id_sphere)
+   43 gg.setDisplayMode(id_sphere,1)
+   44 gg.createAndDisplayGO(id_box)
+   45 gg.setDisplayMode(id_box,1)
+   46 gg.createAndDisplayGO(id_fuse1)
+   47 gg.setDisplayMode(id_fuse1,1)
+   48 gg.createAndDisplayGO(id_fuse2)
+   49 gg.setDisplayMode(id_fuse2,1)
+   50 gg.createAndDisplayGO(id_fuse3)
+   51 gg.setDisplayMode(id_fuse3,1)
+Download this script
+
+
+
+Common
+    1 # Common
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(25, 55, 0)
+   12 p2 = geompy.MakeVertex( 0,  0, 0)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 35
+   17 radius1 = 20
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a sphere
+   21 sphere = geompy.MakeSphereR(40)
+   22 
+   23 # create a box
+   24 box = geompy.MakeBoxDXDYDZ(80, 80, 80)
+   25 
+   26 # make common
+   27 common1 = geompy.MakeCommon(cylinder, sphere)
+   28 common2 = geompy.MakeCommonList([cylinder, sphere, box])
+   29 
+   30 # add objects in the study
+   31 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   32 id_sphere = geompy.addToStudy(sphere, "Sphere")
+   33 id_box = geompy.addToStudy(box, "Box")
+   34 id_common1 = geompy.addToStudy(common1, "Common_1")
+   35 id_common2 = geompy.addToStudy(common2, "Common_2")
+   36 
+   37 # display the results
+   38 gg.createAndDisplayGO(id_cylinder)
+   39 gg.setDisplayMode(id_cylinder,1)
+   40 gg.createAndDisplayGO(id_sphere)
+   41 gg.setDisplayMode(id_sphere,1)
+   42 gg.createAndDisplayGO(id_box)
+   43 gg.setDisplayMode(id_box,1)
+   44 gg.createAndDisplayGO(id_common1)
+   45 gg.setDisplayMode(id_common1,1)
+   46 gg.createAndDisplayGO(id_common2)
+   47 gg.setDisplayMode(id_common2,1)
+Download this script
+
+
+
+Cut
+    1 # Cut
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(25, 55, 0)
+   12 p2 = geompy.MakeVertex( 0,  0, 0)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 35
+   17 radius1 = 20
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a sphere
+   21 sphere = geompy.MakeSphereR(40)
+   22 
+   23 # create a box
+   24 box = geompy.MakeBoxDXDYDZ(80, 80, 80)
+   25 
+   26 #cut
+   27 cut1 = geompy.MakeCut(cylinder, sphere)
+   28 cut2 = geompy.MakeCutList(cylinder, [sphere, box])
+   29 
+   30 # add objects in the study
+   31 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   32 id_sphere = geompy.addToStudy(sphere, "Sphere")
+   33 id_box = geompy.addToStudy(box, "Box")
+   34 id_cut1 = geompy.addToStudy(cut1, "Cut_1")
+   35 id_cut2 = geompy.addToStudy(cut2, "Cut_2")
+   36 
+   37 # display the results
+   38 gg.createAndDisplayGO(id_cylinder)
+   39 gg.setDisplayMode(id_cylinder,1)
+   40 gg.createAndDisplayGO(id_sphere)
+   41 gg.setDisplayMode(id_sphere,1)
+   42 gg.createAndDisplayGO(id_box)
+   43 gg.setDisplayMode(id_box,1)
+   44 gg.createAndDisplayGO(id_cut1)
+   45 gg.setDisplayMode(id_cut1,1) 
+   46 gg.createAndDisplayGO(id_cut2)
+   47 gg.setDisplayMode(id_cut2,1) 
+Download this script
+
+
+
+Intersection
+    1 # Section
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(25, 55, 0)
+   12 p2 = geompy.MakeVertex( 0,  0, 0)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 35
+   17 radius1 = 20
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a sphere
+   21 sphere = geompy.MakeSphereR(40)
+   22 
+   23 # make a section
+   24 section = geompy.MakeSection(cylinder, sphere)
+   25 
+   26 # add objects in the study
+   27 id_section = geompy.addToStudy(section, "Section")
+   28 
+   29 # display the results
+   30 gg.createAndDisplayGO(id_section)
+   31 gg.setDisplayMode(id_section,1)
+
+
+Translation
+    1 # Translation
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(10, 40, 0)
+   12 p2 = geompy.MakeVertex( 0,  0, 50)
+   13 p3 = geompy.MakeVertex(50, 80, 0)
+   14 v = geompy.MakeVector(p1, p2)
+   15 vt = geompy.MakeVector(p1, p3)
+   16 
+   17 # create a cylinder
+   18 height = 35
+   19 radius1 = 20
+   20 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   21 
+   22 # translate the given object along the vector, specified by its end points
+   23 # (all three functions produce the same result)
+   24 translation1 = geompy.MakeTranslationTwoPoints(cylinder, p1, p3)
+   25 translation2 = geompy.MakeTranslation(cylinder, 40, 40, 0)
+   26 translation3 = geompy.MakeTranslationVector(cylinder, vt)
+   27 translation4 = geompy.MakeTranslationVectorDistance(cylinder, vt, 200)
+   28 
+   29 # add objects in the study
+   30 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   31 id_translation1 = geompy.addToStudy(translation1, "Translation1")
+   32 id_translation2 = geompy.addToStudy(translation2, "Translation2")
+   33 id_translation3 = geompy.addToStudy(translation3, "Translation3")
+   34 id_translation4 = geompy.addToStudy(translation4, "Translation4")
+   35 
+   36 # display the results
+   37 gg.createAndDisplayGO(id_cylinder)
+   38 gg.setDisplayMode(id_cylinder,1)
+   39 gg.createAndDisplayGO(id_translation1)
+   40 gg.setDisplayMode(id_translation1,1)
+   41 gg.createAndDisplayGO(id_translation2)
+   42 gg.setDisplayMode(id_translation2,1)
+   43 gg.createAndDisplayGO(id_translation3)
+   44 gg.setDisplayMode(id_translation3,1) 
+   45 gg.createAndDisplayGO(id_translation4)
+   46 gg.setDisplayMode(id_translation4,1) 
+Download this script
+
+
+
+Rotation
+    1 # Rotation
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 import math
+    9 gg = salome.ImportComponentGUI("GEOM")
+   10 
+   11 # create a vertex and a vector
+   12 p1 = geompy.MakeVertex(10, 40,  0)
+   13 p2 = geompy.MakeVertex( 0,  0, 50)
+   14 p3 = geompy.MakeVertex(10, 50,-20)
+   15 p4 = geompy.MakeVertex(10, 50, 60)
+   16 v = geompy.MakeVector(p1, p2)
+   17 vr = geompy.MakeVector(p3, p4)
+   18 
+   19 # create a cylinder
+   20 height = 35
+   21 radius1 = 20
+   22 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   23 
+   24 # rotate the given object around the given axis by the given angle
+   25 rotation1 = geompy.MakeRotation(cylinder, vr, math.pi)
+   26 rotation2 = geompy.MakeRotationThreePoints(cylinder, p4, p1, p2)
+   27 
+   28 # add objects in the study
+   29 id_vr = geompy.addToStudy(vr, "Rotation 1 axis")
+   30 id_p4 = geompy.addToStudy(p4, "Rotation 2 center")
+   31 id_p1 = geompy.addToStudy(p1, "Rotation 2 point 1")
+   32 id_p2 = geompy.addToStudy(p2, "Rotation 2 point 2")
+   33 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   34 id_rotation1 = geompy.addToStudy(rotation1, "Rotation 1")
+   35 id_rotation2 = geompy.addToStudy(rotation2, "Rotation 2")
+   36 
+   37 # display the results
+   38 gg.createAndDisplayGO(id_vr)
+   39 gg.createAndDisplayGO(id_p4)
+   40 gg.createAndDisplayGO(id_p1)
+   41 gg.createAndDisplayGO(id_p2)
+   42 gg.createAndDisplayGO(id_cylinder)
+   43 gg.setDisplayMode(id_cylinder,1)
+   44 gg.createAndDisplayGO(id_rotation1)
+   45 gg.createAndDisplayGO(id_rotation2)
+   46 gg.setDisplayMode(id_rotation1,1)
+   47 gg.setDisplayMode(id_rotation2,1)
+Download this script
+
+
+
+Modify Location
+    1 # Modify Location
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 import math
+    9 gg = salome.ImportComponentGUI("GEOM")
+   10 
+   11 # create a vertex and a vector
+   12 p1 = geompy.MakeVertex(10, 40, 0)
+   13 p2 = geompy.MakeVertex( 0,  0, 50)
+   14 v = geompy.MakeVector(p1, p2)
+   15 
+   16 # create a cylinder
+   17 height = 35
+   18 radius1 = 20
+   19 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   20 circle   = geompy.MakeCircle(p2, v, radius1)
+   21 
+   22 # create local coordinate systems
+   23 cs1 = geompy.MakeMarker( 0, 0, 0, 1,0,0, 0,1,0)
+   24 cs2 = geompy.MakeMarker(30,40,40, 1,0,0, 0,1,0)
+   25 
+   26 # modify the location of the given object
+   27 position = geompy.MakePosition(cylinder, cs1, cs2)
+   28 position2 = geompy.PositionAlongPath(position, circle, 0.75, 1, 1)
+   29 
+   30 # add objects in the study
+   31 id_cs1 = geompy.addToStudy(cs1, "Coordinate system 1")
+   32 id_cs2 = geompy.addToStudy(cs2, "Coordinate system 2")
+   33 id_cylinder = geompy.addToStudy(cylinder, "Cylinder")
+   34 id_circle = geompy.addToStudy(circle, "Circle")
+   35 id_position = geompy.addToStudy(position, "Position")
+   36 id_position2 = geompy.addToStudy(position2, "PositionAlongPath")
+   37 
+   38 # display the results
+   39 gg.createAndDisplayGO(id_cylinder)
+   40 gg.setDisplayMode(id_cylinder,1)
+   41 gg.createAndDisplayGO(id_position)
+   42 gg.setDisplayMode(id_position,1)
+   43 gg.createAndDisplayGO(id_circle)
+   44 gg.setDisplayMode(id_circle,1)
+   45 gg.createAndDisplayGO(id_position2)
+   46 gg.setDisplayMode(id_position2,1)
+Download this script
+
+
+
+Mirror Image
+    1 # Mirror Image
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a box
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 
+   13 # create an object, symmetrical to another object through the given plane
+   14 p1 = geompy.MakeVertex( 0, 25,  0)
+   15 p2 = geompy.MakeVertex( 5, 25,  0)
+   16 p3 = geompy.MakeVertex( 0,-30, 40)
+   17 plane = geompy.MakePlaneThreePnt(p1, p2, p3, 1000.)
+   18 mirror1 = geompy.MakeMirrorByPlane(box, plane)
+   19 
+   20 # create an object, symmetrical to another object through the given axis
+   21 p4 = geompy.MakeVertex( 210, 210, -20)
+   22 p5 = geompy.MakeVertex( 210, 210, 220)
+   23 axis = geompy.MakeVector(p4, p5)
+   24 mirror2 = geompy.MakeMirrorByAxis(box, axis)
+   25 
+   26 # create an object, symmetrical to another object through the given point
+   27 mirror3 = geompy.MakeMirrorByPoint(box, p4)
+   28 
+   29 # add objects in the study
+   30 id_box = geompy.addToStudy(box, "Box")
+   31 id_plane = geompy.addToStudy(plane, "Plane")
+   32 id_mirror1 = geompy.addToStudy(mirror1, "Mirror plane")
+   33 id_axis = geompy.addToStudy(axis, "Axis")
+   34 id_mirror2 = geompy.addToStudy(mirror2, "Mirror axis")
+   35 id_p4 = geompy.addToStudy(p4, "Point")
+   36 id_mirror3 = geompy.addToStudy(mirror3, "Mirror point")
+   37 
+   38 # display the results
+   39 gg.createAndDisplayGO(id_box)
+   40 gg.setDisplayMode(id_box,1)
+   41 gg.createAndDisplayGO(id_plane)
+   42 gg.createAndDisplayGO(id_mirror1)
+   43 gg.setDisplayMode(id_mirror1,1)
+   44 gg.createAndDisplayGO(id_axis)
+   45 gg.createAndDisplayGO(id_mirror2)
+   46 gg.setDisplayMode(id_mirror2,1)
+   47 gg.createAndDisplayGO(id_p4)
+   48 gg.createAndDisplayGO(id_mirror3)
+   49 gg.setDisplayMode(id_mirror3,1) 
+Download this script
+
+
+
+Scale Transform
+    1 # Scale Transform
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a box and a sphere
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 
+   13 # scale the given object by the factor
+   14 p0 = geompy.MakeVertex(100, 100, 100)
+   15 factor = 0.5
+   16 scale = geompy.MakeScaleTransform(box, p0, factor)
+   17 
+   18 # add objects in the study
+   19 id_box = geompy.addToStudy(box, "Box")
+   20 id_scale = geompy.addToStudy(scale, "Scale")
+   21 
+   22 # display the results
+   23 gg.createAndDisplayGO(id_box)
+   24 gg.setDisplayMode(id_box,1)
+   25 gg.setTransparency(id_box,0.5)
+   26 gg.createAndDisplayGO(id_scale)
+   27 gg.setDisplayMode(id_scale,1)
+Download this script
+
+
+
+Offset Surface
+    1 # Offset Surface
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a box and a sphere
+   11 box = geompy.MakeBox(20, 20, 20, 200, 200, 200)
+   12 
+   13 # create a new object as offset of the given object
+   14 offset  = geompy.MakeOffset(box, 70.)
+   15 offset2 = geompy.MakeOffsetIntersectionJoin(box, 70.)
+   16 
+   17 # add objects in the study
+   18 id_box = geompy.addToStudy(box, "Box")
+   19 id_offset = geompy.addToStudy(offset, "Offset")
+   20 id_offset2 = geompy.addToStudy(offset2, "Offset_intersection_join")
+   21 
+   22 # display the results
+   23 gg.createAndDisplayGO(id_box)
+   24 gg.setDisplayMode(id_box,1)
+   25 gg.createAndDisplayGO(id_offset)
+   26 gg.createAndDisplayGO(id_offset2)
+Download this script
+
+
+
+Projection
+    1 # Projection
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 from salome.geom import geomBuilder
+    6 geompy = geomBuilder.New()
+    7 
+    8 # create a cylindric face and a curve(edge)
+    9 cylinder = geompy.MakeCylinderRH(100, 300)
+   10 [face_cyl] = geompy.SubShapes(cylinder, [3])
+   11 
+   12 p1 = geompy.MakeVertex(200, 0, 100)
+   13 p2 = geompy.MakeVertex(200, 80, 100)
+   14 p3 = geompy.MakeVertex(200, 80, 180)
+   15 p4 = geompy.MakeVertex(130, 80, 180)
+   16 p5 = geompy.MakeVertex(90, 80, 240)
+   17 
+   18 curve = geompy.MakeInterpol([p1, p2, p3, p4, p5], False, False)
+   19 
+   20 # create a new object as projection of the
+   21 # given curve on the given cylindric face
+   22 projection = geompy.MakeProjection(curve, face_cyl)
+   23 
+   24 # add objects in the study
+   25 geompy.addToStudy(cylinder, "cylinder")
+   26 geompy.addToStudyInFather(cylinder, face_cyl, "face_cyl")
+   27 geompy.addToStudy(curve, "curve")
+   28 geompy.addToStudy(projection, "projection")
+   29 
+   30 #projection of point on wire
+   31 e1 = geompy.MakeLineTwoPnt(p1, p2)
+   32 e2 = geompy.MakeLineTwoPnt(p2, p3)
+   33 
+   34 w1 = geompy.MakeWire([e1, e2], 1.e-7)
+   35 v1 = geompy.MakeVertex(300, 40, 100)
+   36 
+   37 prj = geompy.MakeProjection(v1, w1)
+   38 geompy.addToStudy(w1, "w1")
+   39 geompy.addToStudy(v1, "v1")
+   40 geompy.addToStudy(prj, "projOnWire")
+   41 
+   42 #projection of a wire on cylinder
+   43 pp1 = geompy.MakeVertex(100, 200, 0)
+   44 pp2 = geompy.MakeVertex(100, 200, 80)
+   45 pp3 = geompy.MakeVertex(100, 220, 90)
+   46 pp4 = geompy.MakeVertex(100, 130, 80)
+   47 pp5 = geompy.MakeVertex(100, 90, 80)
+   48 cc1 = geompy.MakeInterpol([pp1, pp2, pp3, pp4, pp5], True, False)
+   49 ww1 = geompy.MakeWire([cc1], 1.e-7)
+   50 vx = geompy.MakeVectorDXDYDZ(100, 0, 0)
+   51 pln1 = geompy.MakePlane(pp1, vx, 200)
+   52 face1 = geompy.MakeFaceFromSurface(pln1, ww1)
+   53 prj_cyl = geompy.MakeProjectionOnCylinder(face1, 100)
+   54 
+   55 geompy.addToStudy(face1, "pln_face")
+   56 geompy.addToStudy(prj_cyl, "projOnCylinder")
+Download this script
+
+
+
+Multi Translation
+    1 # Multi Translation
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create vertices and vectors
+   11 p0  = geompy.MakeVertex( 0.,  0.,  0.)
+   12 px  = geompy.MakeVertex(20.,  0.,  0.)
+   13 py  = geompy.MakeVertex( 0., 20.,  0.)
+   14 pz  = geompy.MakeVertex( 0.,  0., 20.)
+   15 pxy = geompy.MakeVertex( 50., 0., 0.)
+   16 pxyz = geompy.MakeVertex( 50., 50., 50.)
+   17 vz  = geompy.MakeVector(p0, pz)
+   18 vxy = geompy.MakeVector(px, py)
+   19 vtr1d = geompy.MakeVector(p0, pxyz)
+   20 vtr2d = geompy.MakeVector(p0, pxy)
+   21 
+   22 # create an arc
+   23 arc = geompy.MakeArc(py, pz, px)
+   24 
+   25 # create a wire
+   26 wire = geompy.MakeWire([vxy, arc])
+   27 
+   28 # create a planar face
+   29 face = geompy.MakeFace(wire, 1)
+   30 
+   31 # create a prism
+   32 prism = geompy.MakePrismVecH(face, vz, 20.0)
+   33 
+   34 # translate the given object along the given vector a given number of times
+   35 tr1d = geompy.MakeMultiTranslation1D(prism, vtr1d, 20, 4)
+   36 
+   37 # consequently apply two specified translations to the object a given number of times
+   38 tr2d = geompy.MakeMultiTranslation2D(prism, vtr1d, 20, 4, vtr2d, 80, 3)
+   39 
+   40 # add objects in the study
+   41 id_prism = geompy.addToStudy(prism,"Prism")
+   42 id_tr1d = geompy.addToStudy(tr1d,"Translation 1D")
+   43 id_tr2d = geompy.addToStudy(tr2d,"Translation 2D")
+   44 
+   45 # display the prism and the results of fillet operation
+   46 gg.createAndDisplayGO(id_prism)
+   47 gg.setDisplayMode(id_prism,1)
+   48 gg.createAndDisplayGO(id_tr1d)
+   49 gg.setDisplayMode(id_tr1d,1)
+   50 gg.createAndDisplayGO(id_tr2d)
+   51 gg.setDisplayMode(id_tr2d,1) 
+Download this script
+
+
+
+Multi Rotation
+    1 # Multi Rotation
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 import math
+   10 
+   11 # create vertices and vectors
+   12 p0  = geompy.MakeVertex( 0.,  0.,  0.)
+   13 px  = geompy.MakeVertex(20.,  0.,  0.)
+   14 py  = geompy.MakeVertex( 0., 20.,  0.)
+   15 pz  = geompy.MakeVertex( 0.,  0., 20.)
+   16 pxyz = geompy.MakeVertex( 50., 50., 10.)
+   17 vz  = geompy.MakeVector(p0, pz)
+   18 vxy = geompy.MakeVector(px, py)
+   19 vrot = geompy.MakeVector(p0, pxyz)
+   20 
+   21 # create an arc
+   22 arc = geompy.MakeArc(py, pz, px)
+   23 
+   24 # create a wire
+   25 wire = geompy.MakeWire([vxy, arc])
+   26 
+   27 # create a planar face
+   28 face = geompy.MakeFace(wire, 1)
+   29 
+   30 # create a prism
+   31 prism = geompy.MakePrismVecH(face, vz, 20.0)
+   32 
+   33 # 1. Rotate the prism around the axis vrot 4 times
+   34 
+   35 # rotation angle = 2 * PI / 4
+   36 rot1da = geompy.MultiRotate1DNbTimes(prism, vrot, 4)
+   37 
+   38 # by the given angle of 30 degrees
+   39 rot1db = geompy.MultiRotate1DByStep(prism, vrot, math.pi/6., 4)
+   40 
+   41 # 2. Rotate the prism around the axis vrot 4 times
+   42 #    and translate the result of each rotation 5 times on distance 50
+   43 
+   44 # rotation angle = 2 * PI / 4
+   45 rot2da = geompy.MultiRotate2DNbTimes(prism, vrot, 4, 50, 5)
+   46 
+   47 # by the given angle of 60 degrees
+   48 rot2db = geompy.MultiRotate2DByStep(prism, vrot, math.pi/3., 4, 50, 5)
+   49 
+   50 # add objects in the study
+   51 id_prism = geompy.addToStudy(prism,"Prism")
+   52 id_rot1da = geompy.addToStudy(rot1da,"Rotation 1D Nb.Times")
+   53 id_rot1db = geompy.addToStudy(rot1db,"Rotation 1D By Step")
+   54 id_rot2da = geompy.addToStudy(rot2da,"Rotation 2D Nb.Times")
+   55 id_rot2db = geompy.addToStudy(rot2db,"Rotation 2D By Step")
+   56 
+   57 # display the prism and the results of fillet operation
+   58 gg.createAndDisplayGO(id_prism)
+   59 gg.setDisplayMode(id_prism,1)
+   60 gg.createAndDisplayGO(id_rot1da)
+   61 gg.setDisplayMode(id_rot1da,1)
+   62 gg.createAndDisplayGO(id_rot1db)
+   63 gg.setDisplayMode(id_rot1db,1)
+   64 gg.createAndDisplayGO(id_rot2da)
+   65 gg.setDisplayMode(id_rot2da,1) 
+   66 gg.createAndDisplayGO(id_rot2db)
+   67 gg.setDisplayMode(id_rot2db,1) 
+Download this script
+
+
+
+Fillet 2D
+    1 # Fillet 2D
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a face in OXY plane
+   11 face = geompy.MakeFaceHW(100, 100, 1)
+   12 fillet2d = geompy.MakeFillet2D(face, 30, [7, 9])
+   13 
+   14 # add objects in the study
+   15 id_face  = geompy.addToStudy(face,"Face_1")
+   16 id_fillet2d  = geompy.addToStudy(fillet2d,"Fillet 2D_1")
+   17 
+   18 # display disks
+   19 gg.createAndDisplayGO(id_face)
+   20 gg.createAndDisplayGO(id_fillet2d)
+Download this script
+
+
+
+Fillet 1D
+    1 # Fillet 1D
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create box
+   11 Box_1 = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 # take box edges to create custom complex wire
+   13 [Edge_1,Edge_2,Edge_3,Edge_4,Edge_5,Edge_6,Edge_7,Edge_8,Edge_9,Edge_10,Edge_11,Edge_12] = geompy.SubShapeAllSortedCentres(Box_1, geompy.ShapeType["EDGE"])
+   14 # create wire
+   15 Wire_1 = geompy.MakeWire([Edge_12, Edge_7, Edge_11, Edge_6, Edge_1,Edge_4])
+   16 # make fillet at given wire vertices with giver radius
+   17 Fillet_1D_1 = geompy.MakeFillet1D(Wire_1, 55, [3, 4, 6, 8, 10])
+   18 
+   19 id_Wire_1 = geompy.addToStudy(Wire_1, "Wire_1")
+   20 id_Fillet_1D_1= geompy.addToStudy(Fillet_1D_1, "Fillet_1D_1")
+   21 
+   22 # display disks
+   23 gg.createAndDisplayGO(id_Wire_1)
+   24 gg.createAndDisplayGO(id_Fillet_1D_1)
+Download this script
+
+
+
+Fillet
+    1 # Fillet
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 radius  = 10.
+   10 ShapeTypeEdge = geompy.ShapeType["EDGE"]
+   11 
+   12 # create vertices and vectors
+   13 p0  = geompy.MakeVertex(  0.,   0.,   0.)
+   14 px  = geompy.MakeVertex(100.,   0.,   0.)
+   15 py  = geompy.MakeVertex(  0., 100.,   0.)
+   16 pz  = geompy.MakeVertex(  0.,   0., 100.)
+   17 vz  = geompy.MakeVector(p0, pz)
+   18 vxy = geompy.MakeVector(px, py)
+   19 
+   20 # create an arc
+   21 arc = geompy.MakeArc(py, pz, px)
+   22 
+   23 # create a wire
+   24 wire = geompy.MakeWire([vxy, arc])
+   25 
+   26 # create a planar face
+   27 face = geompy.MakeFace(wire, 1)
+   28 
+   29 # create a prism
+   30 prism = geompy.MakePrismVecH(face, vz, 100.0)
+   31 
+   32 # get the list of IDs (IDList) for the fillet
+   33 prism_edges = geompy.SubShapeAllSortedCentres(prism, ShapeTypeEdge)
+   34 IDlist_e = []
+   35 IDlist_e.append(geompy.GetSubShapeID(prism, prism_edges[0]))
+   36 IDlist_e.append(geompy.GetSubShapeID(prism, prism_edges[1]))
+   37 IDlist_e.append(geompy.GetSubShapeID(prism, prism_edges[2]))
+   38 
+   39 # make a fillet on the specified edges of the given shape
+   40 fillet = geompy.MakeFillet(prism, radius, ShapeTypeEdge, IDlist_e)
+   41 
+   42 # make a fillet on all edges of the given shape
+   43 filletall = geompy.MakeFilletAll(prism, radius)
+   44 
+   45 # add objects in the study
+   46 id_prism = geompy.addToStudy(prism,"Prism")
+   47 id_fillet = geompy.addToStudy(fillet,"Fillet")
+   48 id_filletall = geompy.addToStudy(filletall,"Fillet all")
+   49 
+   50 # display the prism and the results of fillet operation
+   51 gg.createAndDisplayGO(id_prism)
+   52 gg.setDisplayMode(id_prism,1)
+   53 gg.createAndDisplayGO(id_fillet)
+   54 gg.setDisplayMode(id_fillet,1)
+   55 gg.createAndDisplayGO(id_filletall)
+   56 gg.setDisplayMode(id_filletall,1) 
+Download this script
+
+
+
+Chamfer
+    1 # Chamfer
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 d1 = 10.
+   10 d2 = 10.
+   11 ShapeTypeFace = geompy.ShapeType["FACE"]
+   12 
+   13 # create vertices and vectors
+   14 p0  = geompy.MakeVertex(  0.,   0.,   0.)
+   15 px  = geompy.MakeVertex(100.,   0.,   0.)
+   16 py  = geompy.MakeVertex(  0., 100.,   0.)
+   17 pz  = geompy.MakeVertex(  0.,   0., 100.)
+   18 vz  = geompy.MakeVector(p0, pz)
+   19 vxy = geompy.MakeVector(px, py)
+   20 
+   21 # create an arc
+   22 arc = geompy.MakeArc(py, pz, px)
+   23 
+   24 # create a wire
+   25 wire = geompy.MakeWire([vxy, arc])
+   26 
+   27 # create a planar face
+   28 face = geompy.MakeFace(wire, 1)
+   29 
+   30 # create a prism
+   31 prism = geompy.MakePrismVecH(face, vz, 100.0)
+   32 
+   33 # get the list of IDs (IDList) for the chamfer
+   34 prism_faces = geompy.SubShapeAllSortedCentres(prism, ShapeTypeFace)
+   35 f_ind_1 = geompy.GetSubShapeID(prism, prism_faces[0])
+   36 f_ind_2 = geompy.GetSubShapeID(prism, prism_faces[1])
+   37 IDlist_f = [f_ind_1, f_ind_2]
+   38 
+   39 # perform a chamfer on the edges common to the specified faces
+   40 chamfer_e = geompy.MakeChamferEdge(prism, d1, d2, f_ind_1, f_ind_2)
+   41 
+   42 # perform a chamfer on all edges of the specified faces
+   43 chamfer_f = geompy.MakeChamferFaces(prism, d1, d2, IDlist_f)
+   44 chamfer_f1 = geompy.MakeChamfer(prism, d1, d2, ShapeTypeFace, IDlist_f)
+   45 
+   46 # perform a symmetric chamfer on all edges of the given shape
+   47 chamfer_all = geompy.MakeChamferAll(prism, d1)
+   48 
+   49 # add objects in the study
+   50 id_prism = geompy.addToStudy(prism,"Prism")
+   51 id_chamfer_e = geompy.addToStudy(chamfer_e,"Chamfer edge")
+   52 id_chamfer_f = geompy.addToStudy(chamfer_f,"Chamfer faces")
+   53 id_chamfer_f1 = geompy.addToStudy(chamfer_f1,"Chamfer faces 1")
+   54 id_chamfer_all = geompy.addToStudy(chamfer_all,"Chamfer all")
+   55 
+   56 # display the prism and the results of chamfer operation
+   57 gg.createAndDisplayGO(id_prism)
+   58 gg.setDisplayMode(id_prism,1)
+   59 gg.createAndDisplayGO(id_chamfer_e)
+   60 gg.setDisplayMode(id_chamfer_e,1)
+   61 gg.createAndDisplayGO(id_chamfer_f)
+   62 gg.setDisplayMode(id_chamfer_f,1)
+   63 gg.createAndDisplayGO(id_chamfer_f1)
+   64 gg.setDisplayMode(id_chamfer_f1,1)
+   65 gg.createAndDisplayGO(id_chamfer_all)
+   66 gg.setDisplayMode(id_chamfer_all,1) 
+Download this script
+
+
+
+Extend Edge and Face
+    1 # Extend Edge and Face
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create vertices
+   11 p1 = geompy.MakeVertex(  0.,     0.,   0.)
+   12 p2 = geompy.MakeVertex(100.,   100.,   0.)
+   13 p3 = geompy.MakeVertex(  0.,   100.,   0.)
+   14 
+   15 # create edges
+   16 edge1 = geompy.MakeEdge(p1, p2)
+   17 edge2 = geompy.MakeCircleR(100)
+   18 
+   19 # create faces
+   20 face1   = geompy.MakePlaneThreePnt(p1, p2, p3, 200)
+   21 sphere1 = geompy.MakeSpherePntR(p1, 100)
+   22 faces2  = geompy.SubShapeAllSorted(sphere1, GEOM.FACE)
+   23 face2   = faces2[0]
+   24 
+   25 # perform edge extension
+   26 resEdge1 = geompy.ExtendEdge(edge1,  0.2,  0.8)
+   27 resEdge2 = geompy.ExtendEdge(edge1, -0.3,  1.3)
+   28 resEdge3 = geompy.ExtendEdge(edge2,  0.5,  1)
+   29 resEdge4 = geompy.ExtendEdge(edge2,  0.2,  0.5)
+   30 
+   31 # perform face extension
+   32 resFace1 = geompy.ExtendFace(face1, 0.2, 0.8, -0.3, 1.3)
+   33 resFace2 = geompy.ExtendFace(face1, 0,   0.5,  1,   2)
+   34 resFace3 = geompy.ExtendFace(face2, 0.2, 0.8,  0.3, 0.7)
+   35 resFace4 = geompy.ExtendFace(face2, 0.5, 1,    0.5, 1)
+   36 
+   37 # add objects in the study
+   38 id_edge1    = geompy.addToStudy(edge1,    "Edge 1")
+   39 id_edge2    = geompy.addToStudy(edge2,    "Edge 2")
+   40 id_face1    = geompy.addToStudy(face1,    "Face 1")
+   41 id_face2    = geompy.addToStudy(face2,    "Face 2")
+   42 id_resEdge1 = geompy.addToStudy(resEdge1, "Extended Edge 1")
+   43 id_resEdge2 = geompy.addToStudy(resEdge2, "Extended Edge 1")
+   44 id_resEdge3 = geompy.addToStudy(resEdge3, "Extended Edge 2")
+   45 id_resEdge4 = geompy.addToStudy(resEdge4, "Extended Edge 3")
+   46 id_resFace1 = geompy.addToStudy(resFace1, "Extended Face 1")
+   47 id_resFace2 = geompy.addToStudy(resFace2, "Extended Face 2")
+   48 id_resFace3 = geompy.addToStudy(resFace3, "Extended Face 3")
+   49 id_resFace4 = geompy.addToStudy(resFace4, "Extended Face 4")
+   50 
+   51 # display the prism and the results of chamfer operation
+   52 gg.createAndDisplayGO(id_edge1)
+   53 gg.setDisplayMode(id_edge1, 1)
+   54 gg.createAndDisplayGO(id_edge2)
+   55 gg.setDisplayMode(id_edge2, 1)
+   56 gg.createAndDisplayGO(id_face1)
+   57 gg.setDisplayMode(id_face1, 1)
+   58 gg.createAndDisplayGO(id_face2)
+   59 gg.setDisplayMode(id_face2, 1)
+   60 gg.createAndDisplayGO(id_resEdge1)
+   61 gg.setDisplayMode(id_resEdge1, 1) 
+   62 gg.createAndDisplayGO(id_resEdge2)
+   63 gg.setDisplayMode(id_resEdge2, 1)
+   64 gg.createAndDisplayGO(id_resEdge3)
+   65 gg.setDisplayMode(id_resEdge3, 1)
+   66 gg.createAndDisplayGO(id_resEdge4)
+   67 gg.setDisplayMode(id_resEdge4, 1)
+   68 gg.createAndDisplayGO(id_resFace1)
+   69 gg.setDisplayMode(id_resFace1, 1)
+   70 gg.createAndDisplayGO(id_resFace2)
+   71 gg.setDisplayMode(id_resFace2, 1) 
+   72 gg.createAndDisplayGO(id_resFace3)
+   73 gg.setDisplayMode(id_resFace3, 1)
+   74 gg.createAndDisplayGO(id_resFace4)
+   75 gg.setDisplayMode(id_resFace4, 1) 
+
+
+Multi Transformation
+    1 # Multi Transformation
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create vertices
+   11 p_25_25_50 = geompy.MakeVertex(25., 25., 50.)
+   12 p_50_25_25 = geompy.MakeVertex(50., 25., 25.)
+   13 p_25_50_25 = geompy.MakeVertex(25., 50., 25.)
+   14 
+   15 box = geompy.MakeBoxDXDYDZ(50, 50, 50)
+   16 
+   17 top_face = geompy.GetFaceNearPoint(box, p_25_25_50)
+   18 yz_face = geompy.GetFaceNearPoint(box, p_50_25_25)
+   19 xz_face = geompy.GetFaceNearPoint(box, p_25_50_25)
+   20 
+   21 top_face_ind = geompy.GetSubShapeID(box, top_face)
+   22 yz_face_ind = geompy.GetSubShapeID(box, yz_face)
+   23 xz_face_ind = geompy.GetSubShapeID(box, xz_face)
+   24 
+   25 # Multi-transformate block and glue the result
+   26 box_tr1 = geompy.MakeMultiTransformation1D(box, yz_face_ind, top_face_ind, 3)
+   27 box_tr2 = geompy.MakeMultiTransformation2D(box, xz_face_ind, yz_face_ind, 3, top_face_ind, 0, 2)
+   28 
+   29 # add objects in the study
+   30 id_box = geompy.addToStudy(box, "Box")
+   31 id_box_tr1 = geompy.addToStudy(box_tr1, "Multi-transformed Block 1D")
+   32 id_box_tr2 = geompy.addToStudy(box_tr2, "Multi-transformed Block 2D")
+   33 
+   34 # display the results
+   35 gg.createAndDisplayGO(id_box)
+   36 gg.setDisplayMode(id_box,1)
+   37 gg.createAndDisplayGO(id_box_tr1)
+   38 gg.createAndDisplayGO(id_box_tr2) 
+Download this script
+
+
+
+Explode on Blocks
+    1 # Explode on Blocks
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a box and a sphere
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 sphere = geompy.MakeSphereR(100)
+   13 
+   14 # make a compound
+   15 compound = geompy.MakeCompound([box, sphere])
+   16 
+   17 # get all the blocks of the given compound, by criteria: min_nb_faces <= nb. of faces <= max_nb_faces
+   18 min_nb_faces = 6
+   19 max_nb_faces = 6
+   20 make_block_explode = geompy.MakeBlockExplode(compound, min_nb_faces, max_nb_faces)
+   21 
+   22 # add objects in the study
+   23 id_compound = geompy.addToStudy(compound, "Compound")
+   24 id_make_block_explode = geompy.addToStudyInFather(compound, make_block_explode[0], "MakeBlockExplode")
+   25 
+   26 # display the results
+   27 gg.createAndDisplayGO(id_compound)
+   28 gg.createAndDisplayGO(id_make_block_explode)
+   29 gg.setDisplayMode(id_make_block_explode,1) 
+Download this script
+
+
+
+Propagate
+    1 # Propagate
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 
+    9 # create a box
+   10 check_box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   11 
+   12 # build all possible propagation groups
+   13 listChains = geompy.Propagate(check_box)
+   14 
+   15 # add objects in the study
+   16 geompy.addToStudy(check_box, "Box")
+   17 ii = 1
+   18 for chain in listChains:
+   19     geompy.addToStudyInFather(check_box, chain, "propagation chain " + repr(ii))
+   20     ii = ii + 1
+   21     pass
+   22 
+   23 salome.sg.updateObjBrowser() 
+
+
+Shape Processing
+    1 # Shape Processing
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create vertices, an edge, an arc, a wire, a face and a prism
+   11 p1 = geompy.MakeVertex(0,0,0)
+   12 p2 = geompy.MakeVertex(200,0,0)
+   13 p3 = geompy.MakeVertex(100,150,0)
+   14 edge = geompy.MakeEdge(p1,p2)
+   15 arc  = geompy.MakeArc(p1,p3,p2)
+   16 wire = geompy.MakeWire([edge,arc])
+   17 face = geompy.MakeFace(wire, 1)
+   18 theShape = geompy.MakePrismVecH(face, edge, 130)
+   19 
+   20 # check the shape at the beginning
+   21 print("Before ProcessShape:")
+   22 isValid = geompy.CheckShape(theShape, True)
+   23 if isValid == 0:
+   24     print("The shape is not valid")
+   25 else:
+   26     print("The shape seems to be valid")
+   27 
+   28 # process the Shape
+   29 Operators = ["FixShape"]
+   30 Parameters = ["FixShape.Tolerance3d"]
+   31 Values = ["1e-7"]
+   32 PS = geompy.ProcessShape(theShape, Operators, Parameters, Values)
+   33 
+   34 # check the shape at the end
+   35 print("After ProcessShape:")
+   36 isValid = geompy.CheckShape(PS, True)
+   37 if isValid == 0:
+   38     print("The shape is not valid")
+   39     raise RuntimeError("It seems, that the ProcessShape() has failed")
+   40 else:
+   41     print("The shape seems to be valid")
+   42 
+   43 # add in the study and display
+   44 Id_Shape = geompy.addToStudy(theShape, "Invalid Shape")
+   45 Id_PS    = geompy.addToStudy(PS, "Processed Shape")
+   46 gg.createAndDisplayGO(Id_Shape)
+   47 gg.setDisplayMode(Id_Shape,1)
+   48 gg.createAndDisplayGO(Id_PS)
+   49 gg.setDisplayMode(Id_PS,1) 
+Download this script
+
+
+
+Suppress Faces
+    1 # Suppress Faces
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a box
+   11 box = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   12 
+   13 # The list of IDs (IDList) for suppress faces
+   14 sup_faces = []
+   15 sup_faces = geompy.SubShapeAllSortedCentres(box, geompy.ShapeType["FACE"])
+   16 
+   17 # get indices of the sub-shape
+   18 f1_id = geompy.GetSubShapeID(box, sup_faces[3])
+   19 
+   20 # remove faces from the given object (shape)
+   21 result = geompy.SuppressFaces(box, [f1_id])
+   22 
+   23 # add objects in the study
+   24 id_box = geompy.addToStudy(box, "Box")
+   25 id_result = geompy.addToStudy(result, "Result")
+   26 
+   27 # display the results
+   28 gg.createAndDisplayGO(id_box)
+   29 gg.setDisplayMode(id_box,1)
+   30 gg.createAndDisplayGO(id_result)
+   31 gg.setDisplayMode(id_result,1)
+Download this script
+
+
+
+Close Contour
+    1 # Close Contour
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create vertices and vectors
+   11 p0  = geompy.MakeVertex(  0.,   0.,   0.)
+   12 px  = geompy.MakeVertex(100.,   0.,   0.)
+   13 py  = geompy.MakeVertex(  0., 100.,   0.)
+   14 py1 = geompy.MakeVertex(  0., 140.,   0.)
+   15 pz  = geompy.MakeVertex(  0.,   0., 100.)
+   16 vxy = geompy.MakeVector(px, py)
+   17 
+   18 # create an arc
+   19 arc = geompy.MakeArc(py1, pz, px)
+   20 
+   21 # create a wire
+   22 wire = geompy.MakeWire([vxy, arc])
+   23 
+   24 # close an open wire by creation of an edge between ends
+   25 wire_close = geompy.CloseContour(wire, [1], 0)
+   26 
+   27 # add objects in the study
+   28 id_wire = geompy.addToStudy(wire, "Wire")
+   29 id_wire_close = geompy.addToStudy(wire_close, "Wire close")
+   30 
+   31 # display the results
+   32 gg.createAndDisplayGO(id_wire)
+   33 gg.createAndDisplayGO(id_wire_close) 
+Download this script
+
+
+
+Suppress Internal Wires
+    1 # Suppress Internal Wires
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(55, 65, 50)
+   12 p2 = geompy.MakeVertex(55,  0, 50)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 100
+   17 radius1 = 40
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a box
+   21 box = geompy.MakeBoxDXDYDZ(100, 100, 100)
+   22 
+   23 # make a cut
+   24 cut = geompy.MakeCut(box, cylinder)
+   25 
+   26 # suppress all internal wires
+   27 result = geompy.SuppressInternalWires(cut, [])
+   28 
+   29 # add objects in the study
+   30 id_cut = geompy.addToStudy(cut, "Cut")
+   31 id_result = geompy.addToStudy(result, "Result")
+   32 
+   33 # display the results
+   34 gg.createAndDisplayGO(id_cut)
+   35 gg.setDisplayMode(id_cut,1)
+   36 gg.createAndDisplayGO(id_result)
+   37 gg.setDisplayMode(id_result,1) 
+Download this script
+
+
+
+Suppress Holes
+    1 # Suppress Holes
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create a vertex and a vector
+   11 p1 = geompy.MakeVertex(35, 35, 0)
+   12 p2 = geompy.MakeVertex(35, 35, 50)
+   13 v = geompy.MakeVector(p1, p2)
+   14 
+   15 # create a cylinder
+   16 height = 20
+   17 radius1 = 20
+   18 cylinder = geompy.MakeCylinder(p1, v, radius1, height)
+   19 
+   20 # create a cone
+   21 cone = geompy.MakeCone(p1, v, 70, 0, 80)
+   22 
+   23 # make a cut
+   24 cut = geompy.MakeCut(cone, cylinder)
+   25 
+   26 # get faces as sub-shapes
+   27 faces = geompy.SubShapeAllSortedCentres(cut, geompy.ShapeType["FACE"])
+   28 f_2 = geompy.GetSubShapeID(cut, faces[2])
+   29 
+   30 # remove one face from the shape
+   31 cut_without_f_2 = geompy.SuppressFaces(cut, [f_2])
+   32 
+   33 # get edges as sub-shapes
+   34 edges = geompy.SubShapeAllSortedCentres(faces[2], geompy.ShapeType["EDGE"])
+   35 edge  = geompy.GetInPlace(cut_without_f_2, edges[0], True)
+   36 e_2 = geompy.GetSubShapeID(cut_without_f_2, edge)
+   37 
+   38 # suppress a hole using the selected edge
+   39 result = geompy.SuppressHoles(cut_without_f_2, [e_2])
+   40 
+   41 # add objects in the study
+   42 id_cut = geompy.addToStudy(cut, "Cut")
+   43 id_cut_without_f_2 = geompy.addToStudy(cut_without_f_2, "Cut without f_2")
+   44 id_result = geompy.addToStudy(result, "Result")
+   45 
+   46 # display the results
+   47 gg.createAndDisplayGO(id_cut)
+   48 gg.setDisplayMode(id_cut,1)
+   49 gg.createAndDisplayGO(id_cut_without_f_2)
+   50 gg.setDisplayMode(id_cut_without_f_2,1)
+   51 gg.createAndDisplayGO(id_result)
+   52 gg.setDisplayMode(id_result,1) 
+Download this script
+
+
+
+Sewing
+    1 # Sewing
+    2 
+    3 import salome, math
+    4 salome.salome_init_without_session()
+    5 from salome.geom import geomBuilder
+    6 
+    7 geompy = geomBuilder.New()
+    8 gg     = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create base points
+   11 px = geompy.MakeVertex(100., 0., 0.)
+   12 py = geompy.MakeVertex(0., 100., 0.)
+   13 pz = geompy.MakeVertex(0., 0., 100.)
+   14 
+   15 # create base geometry 2D
+   16 vector = geompy.MakeVector(px, py)
+   17 arc    = geompy.MakeArc(py, pz, px)
+   18 
+   19 # create base objects
+   20 angle = 45. * math.pi / 180
+   21 WantPlanarFace = True
+   22 wire     = geompy.MakeWire([vector, arc])
+   23 face     = geompy.MakeFace(wire, WantPlanarFace)
+   24 face_rot = geompy.MakeRotation(face, vector, angle)
+   25 
+   26 # make sewing
+   27 precision = 0.00001
+   28 sewing = geompy.MakeSewing([face, face_rot], precision)
+   29 
+   30 # add objects in the study
+   31 id_face     = geompy.addToStudy(face, "Face")
+   32 id_face_rot = geompy.addToStudy(face_rot, "Face rotation")
+   33 id_sewing   = geompy.addToStudy(sewing, "Sewing")
+   34 
+   35 # display the results
+   36 gg.createAndDisplayGO(id_face)
+   37 gg.setDisplayMode(id_face,1)
+   38 gg.createAndDisplayGO(id_face_rot)
+   39 gg.setDisplayMode(id_face_rot,1)
+   40 gg.createAndDisplayGO(id_sewing)
+   41 gg.setDisplayMode(id_sewing,1) 
+   42 
+   43 
+   44 # Example 2: make a shell of a multiply translated face
+   45 quad         = geompy.MakeFaceHW( 10, 20, 1 )
+   46 quadCompound = geompy.MakeMultiTranslation1D( quad, geompy.MakeVectorDXDYDZ(1,0,0), 10, 3)
+   47 shell        = geompy.Sew( quadCompound, 1e-6 )
+   48 
+   49 id_shell = geompy.addToStudy( shell, "3 quads shell")
+   50 gg.createAndDisplayGO(id_shell)
+Download this script
+
+
+
+Glue Faces
+    1 # Glue Faces
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create boxes
+   11 box1 = geompy.MakeBox(0,0,0,100,50,100)
+   12 box2 = geompy.MakeBox(100,0,0,250,50,100)
+   13 
+   14 # make compound
+   15 compound = geompy.MakeCompound([box1, box2])
+   16 
+   17 # glue compound's faces
+   18 tolerance = 1e-5
+   19 glue = geompy.MakeGlueFaces(compound, tolerance)
+   20 
+   21 # add objects in study
+   22 id_box1 = geompy.addToStudy(box1, "Box1")
+   23 id_box2 = geompy.addToStudy(box2, "Box2")
+   24 id_compound = geompy.addToStudy(compound, "Compound")
+   25 id_glue = geompy.addToStudy(glue, "Glue faces")
+   26 
+   27 # display results
+   28 gg.createAndDisplayGO(id_box1)
+   29 gg.setDisplayMode(id_box1,1)
+   30 gg.createAndDisplayGO(id_box2)
+   31 gg.setDisplayMode(id_box2,1)
+   32 gg.createAndDisplayGO(id_compound)
+   33 gg.setDisplayMode(id_compound,1)
+   34 gg.createAndDisplayGO(id_glue)
+   35 gg.setDisplayMode(id_glue,1) 
+Download this script
+
+
+
+Glue Edges
+    1 # Glue Edges
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # create boxes
+   11 box1 = geompy.MakeBox(0,0,0,100,50,100)
+   12 box2 = geompy.MakeBox(100,0,0,250,50,100)
+   13 
+   14 # make compound
+   15 compound = geompy.MakeCompound([box1, box2])
+   16 
+   17 # glue all compound's edges
+   18 tolerance = 1e-5
+   19 glue1 = geompy.MakeGlueEdges(compound, tolerance)
+   20 
+   21 # glue some compound's edges
+   22 list_edges = geompy.GetGlueEdges(compound, tolerance)
+   23 glue2 = geompy.MakeGlueEdgesByList(compound, tolerance, [list_edges[0], list_edges[2]])
+   24 
+   25 # add objects in study
+   26 geompy.addToStudy(box1, "Box1")
+   27 geompy.addToStudy(box2, "Box2")
+   28 geompy.addToStudy(compound, "Compound")
+   29 geompy.addToStudy(glue1, "Glue all edges")
+   30 geompy.addToStudy(glue2, "Glue two edges")
+   31 
+   32 if salome.sg.hasDesktop():
+   33   salome.sg.updateObjBrowser()
+Download this script
+
+
+
+Limit Tolerance
+    1 # Limit Tolerance
+    2 
+    3 import salome
+    4 salome.salome_init()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # import initial topology with bad tolerances (more than 1e-07)
+   11 shape1 = geompy.ImportBREP("my_shape_1.brep")
+   12 shape2 = geompy.ImportBREP("my_shape_2.brep")
+   13 
+   14 geompy.addToStudy(shape1, "Shape 1")
+   15 geompy.addToStudy(shape2, "Shape 2")
+   16 
+   17 # perform partition
+   18 try:
+   19     part = geompy.MakePartition([shape1, shape2])
+   20 except:
+   21     # limit tolerance
+   22     tolerance = 1e-07
+   23     shape1_lt = geompy.LimitTolerance(shape1, tolerance)
+   24     shape2_lt = geompy.LimitTolerance(shape2, tolerance)
+   25 
+   26     # process shape
+   27     good_shape1 = geompy.ProcessShape(shape1_lt, ["FixShape"], ["FixShape.Tolerance3d"], ["1e-7"])
+   28     good_shape2 = geompy.ProcessShape(shape2_lt, ["FixShape"], ["FixShape.Tolerance3d"], ["1e-7"])
+   29 
+   30     geompy.addToStudy(good_shape1, "Shape 1 corrected")
+   31     geompy.addToStudy(good_shape2, "Shape 2 corrected")
+   32 
+   33     # perform partition on corrected shapes
+   34     part = geompy.MakePartition([good_shape1, good_shape2])
+   35     pass
+   36 
+   37 geompy.addToStudy(part, "Partition")
+Download this script
+
+
+
+Add Point on Edge
+    1 # Add Point on Edge
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 
+    9 # Variant 1: using DivideEdge()
+   10 
+   11 # create vertices
+   12 p1 = geompy.MakeVertex(0,0,50)
+   13 p2 = geompy.MakeVertex(60,0,50)
+   14 
+   15 # make an edge
+   16 edge = geompy.MakeEdge(p1, p2) #geompy.GetSubShape(box, edge_ind)
+   17 
+   18 # divide an edge
+   19 divide = geompy.DivideEdge(edge, -1, 0.5, 0)
+   20 
+   21 # add objects in the study
+   22 id_edge = geompy.addToStudy(edge, "Edge")
+   23 edge_points = geompy.SubShapeAllSortedCentres(edge, geompy.ShapeType["VERTEX"])
+   24 for point in edge_points:
+   25     geompy.addToStudyInFather(edge, point, "Edge's point")
+   26 
+   27 id_divide = geompy.addToStudy(divide, "Divided edge")
+   28 edge_points = geompy.SubShapeAllSortedCentres(divide, geompy.ShapeType["VERTEX"])
+   29 for point in edge_points:
+   30     geompy.addToStudyInFather(divide, point, "Edge's point after divide")
+   31 
+   32 
+   33 # Variant 2: using DivideEdgeByPoint()
+   34  
+   35 box  = geompy.MakeBox(0,0,0, 10,10,10, theName="box")
+   36 p1   = geompy.MakeVertex( 3, -2, 1, theName="point 1 to project" )
+   37 p2   = geompy.MakeVertex( 7, -2, 1, theName="point 2 to project" )
+   38 edge = geompy.GetEdgeNearPoint( box, p1, theName="edge to split")
+   39 
+   40 div  = geompy.DivideEdgeByPoint( box, edge, [p1, p2], theName="box (edge divided)")
+   41 
+   42 
+   43 salome.sg.updateObjBrowser() 
+Download this script
+
+
+
+Fuse Collinear Edges within a Wire
+    1 # Fuse Collinear Edges within a Wire
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 
+    9 # create vertices
+   10 p1 = geompy.MakeVertex(0, 0, 0)
+   11 p2 = geompy.MakeVertex(70, 0, 0)
+   12 p3 = geompy.MakeVertex(70, 50, 0)
+   13 p4 = geompy.MakeVertex(70, 80, 0)
+   14 p5 = geompy.MakeVertex(50, 80, 0)
+   15 p6 = geompy.MakeVertex(20, 80, 0)
+   16 p7 = geompy.MakeVertex(0, 80, 0)
+   17 p8 = geompy.MakeVertex(0, 30, 0)
+   18 
+   19 points = [p1, p2, p3, p4, p5, p6, p7, p8]
+   20 
+   21 # make a wire
+   22 wire_1 = geompy.MakePolyline(points, True)
+   23 
+   24 # suppress some vertices in the wire
+   25 wire_2 = geompy.FuseCollinearEdgesWithinWire(wire_1, [p3])
+   26 wire_3 = geompy.FuseCollinearEdgesWithinWire(wire_1, [p5, p6])
+   27 
+   28 # suppress all suitable vertices in the wire
+   29 wire_4 = geompy.FuseCollinearEdgesWithinWire(wire_1, [])
+   30 
+   31 wires = [wire_1, wire_2, wire_3, wire_4]
+   32 
+   33 # add objects in the study
+   34 ii = 1
+   35 for point in points:
+   36     geompy.addToStudy(point, "p%d"%ii)
+   37     ii = ii + 1
+   38     pass
+   39 
+   40 ii = 1
+   41 for wire in wires:
+   42     geompy.addToStudy(wire, "wire_%d"%ii)
+   43     wire_points = geompy.SubShapeAllSortedCentres(wire, geompy.ShapeType["VERTEX"])
+   44     jj = 1
+   45     for point in wire_points:
+   46         geompy.addToStudyInFather(wire, point, "point_%d"%jj)
+   47         jj = jj + 1
+   48         pass
+   49     ii = ii + 1
+   50     pass
+   51 
+   52 salome.sg.updateObjBrowser() 
+Download this script
+
+
+
+Remove internal(shared) faces
+    1 # Remove internal(shared) faces from a compound
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 
+    9 # create solids with some coincident faces
+   10 Box_1 = geompy.MakeBoxDXDYDZ(200, 200, 200)
+   11 Translation_1 = geompy.MakeTranslation(Box_1, 200, 0, 0)
+   12 Translation_2 = geompy.MakeTranslation(Box_1, 200, 200, 0)
+   13 
+   14 geompy.addToStudy(Box_1, 'Box_1')
+   15 geompy.addToStudy(Translation_1, 'Translation_1')
+   16 geompy.addToStudy(Translation_2, 'Translation_2')
+   17 
+   18 # partition three solids to obtain shared faces
+   19 Partition_1 = geompy.MakePartition([Box_1, Translation_1, Translation_2])
+   20 geompy.addToStudy(Partition_1, 'Partition_1')
+   21 
+   22 # remove shared faces to obtain one solid instead of three
+   23 Joined_1 = geompy.RemoveInternalFaces(Partition_1)
+   24 geompy.addToStudy(Joined_1, 'Joined_1')
+   25 
+   26 salome.sg.updateObjBrowser() 
+
+
+    1 # Geom Field
+    2 
+    3 import salome
+    4 salome.salome_init_without_session()
+    5 import GEOM
+    6 from salome.geom import geomBuilder
+    7 geompy = geomBuilder.New()
+    8 gg = salome.ImportComponentGUI("GEOM")
+    9 
+   10 # a box
+   11 shape = geompy.MakeBoxDXDYDZ( 1, 1, 1, theName="box")
+   12 
+   13 # Create fields holding sub-shape IDs as strings,
+   14 # which can be useful to see sub-shape IDs in the Viewer
+   15 
+   16 componentNames = ['ID']
+   17 fieldDataType = GEOM.FDT_String
+   18 stepID = 0
+   19 stamp = 0
+   20 
+   21 dim = 0 # == vertices
+   22 values = [str(i) for i in geompy.SubShapeAllIDs( shape, geompy.ShapeType["VERTEX"] )]
+   23 f0 = geompy.CreateField( shape, "vertices", fieldDataType, dim, componentNames )
+   24 s0 = f0.addStep( stepID, stamp, values )
+   25 geompy.addToStudyInFather( shape, f0, f0.GetName() )
+   26 s0id = geompy.addToStudyInFather( f0, s0, s0.GetName() )
+   27 
+   28 dim = 1 # == edges
+   29 values = [str(i) for i in geompy.SubShapeAllIDs( shape, geompy.ShapeType["EDGE"] )]
+   30 f1 = geompy.CreateField( shape, "edges", fieldDataType, dim, componentNames )
+   31 s1 = f1.addStep( stepID, stamp, values )
+   32 geompy.addToStudyInFather( shape, f1, f1.GetName() )
+   33 geompy.addToStudyInFather( f1, s1, s1.GetName() )
+   34 
+   35 dim = 2 # == faces
+   36 values = [str(i) for i in geompy.SubShapeAllIDs( shape, geompy.ShapeType["FACE"] )]
+   37 f2 = geompy.CreateField( shape, "faces", fieldDataType, dim, componentNames )
+   38 s2 = f2.addStep( stepID, stamp, values )
+   39 geompy.addToStudyInFather( shape, f2, f2.GetName() )
+   40 geompy.addToStudyInFather( f2, s2, s2.GetName() )
+   41 
+   42 dim = 3 # == solids
+   43 values = [str(i) for i in geompy.SubShapeAllIDs( shape, geompy.ShapeType["SOLID"] )]
+   44 f3 = geompy.CreateField( shape, "solids", fieldDataType, dim, componentNames )
+   45 s3 = f3.addStep( stepID, stamp, values )
+   46 geompy.addToStudyInFather( shape, f3, f3.GetName() )
+   47 geompy.addToStudyInFather( f3, s3, s3.GetName() )
+   48 
+   49 dim = -1 # == whole shape
+   50 f_1 = geompy.CreateField( shape, "whole shape", fieldDataType, dim, componentNames )
+   51 s_1 = f_1.addStep(stepID, stamp, ["1"])
+   52 geompy.addToStudyInFather( shape, f_1, f_1.GetName() )
+   53 geompy.addToStudyInFather( f_1, s_1, s_1.GetName() )
+   54 
+   55 # display
+   56 gg.createAndDisplayGO( s0id )
+
+
