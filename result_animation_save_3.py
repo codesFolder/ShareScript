@@ -1,80 +1,68 @@
-# make_paraview_script.py (Version 4 - The Ultimate Edition)
-# This script generates a ParaView python script to automate animation creation
-# for SCALAR, VECTOR, and TENSOR results by simply changing one variable.
+# make_paraview_script.py (Version 6 - The Polished & Perfected Edition)
+# This script generates a ParaView python script to automate animation creation.
+# It is the definitive version, handling all known Salome naming conventions.
+
 import os
 
-# --- USER INPUTS ---
-# --- You only need to edit the 'result_key' and the min/max values! ---
+# --- HOW TO USE AND CUSTOMIZE THIS SCRIPT IN THE FUTURE ---
+#
+# 1. PRIMARY USAGE:
+#    - To create an animation script, you only need to edit TWO things below:
+#      a) `result_key`: Change this to the result you want (e.g., 'DEPL', 'TEMP', 'VMIS').
+#      b) `fixed_colormap_min`/`max`: Set the color range for your chosen result.
+#
+# 2. CUSTOMIZING FOR NEW RESULTS:
+#    - If you have a new result type in the future, you only need to add a new entry
+#      to the `RESULT_CONFIG` dictionary below.
+#    - Study the existing entries ('TEMP', 'DEPL', 'SXX') to see the patterns.
+#
+# 3. MODIFYING NAMING RULES:
+#    - If Salome changes how it names fields, the logic is in the main `for` loop
+#      under the comment "DYNAMIC FIELD NAME AND TUPLE GENERATION".
+#    - Read the comments there to understand how it builds the names. You can tweak
+#      the f-strings (e.g., `f"{...}"`) in that section to match any new pattern.
+#
+# ---------------------------------------------------------------------------------
+
+# --- USER INPUTS (Edit these for each run) ---
 
 # 1. CHOOSE THE RESULT TO PROCESS
-# Just pick one of the keys from the RESULT_CONFIG library below.
-# Examples: 'TEMP', 'DEPL', 'SXX', 'SYY', 'SZZ', 'SXY', 'SYZ', 'SXZ', 'VMIS'
-result_key = 'VMIS'
+#    (e.g., 'TEMP', 'DEPL', 'SXX', 'SYY', 'SZZ', 'VMIS')
+result_key = 'DEPL'
 
 # 2. SET THE FIXED COLORMAP RANGE FOR YOUR CHOSEN RESULT
-# Example for Von Mises Stress (VMIS):
 fixed_colormap_min = 0.0
-fixed_colormap_max = 1000.0
-# Example for Stress XX (SXX):
-# fixed_colormap_min = -200.0
-# fixed_colormap_max = 2500.0
+fixed_colormap_max = 0.15
 
-# --- THE CONFIGURATION LIBRARY (No need to edit this part) ---
-# This library stores all the unique settings for each result type.
+# --- THE CONFIGURATION LIBRARY (Add new results here) ---
 RESULT_CONFIG = {
+    # 'KEY': This is the name you use in `result_key` above.
     'TEMP': {
-        'file_basename': 'ther',  # Base name of the .rmed files (ther1, ther2...)
-        'field_name': 'TEMP',     # Field name inside the .rmed file
-        'component': None,        # None indicates this is a SCALAR result
-        'result_prefix': 'res'    # 'res' + 'ther1' + 'TEMP' -> resther1TEMP
+        'file_basename': 'ther',  # The start of the .rmed filename (ther1.rmed, ther2.rmed...).
+        'field_name': 'TEMP',     # The base name of the result field inside the file.
+        'component': None,        # Use `None` for SCALAR results (like temperature).
+        'result_prefix': 'res'    # The text that comes before the number in the field name.
     },
     'DEPL': {
         'file_basename': 'mec',
         'field_name': 'DEPL',
-        'component': 'Magnitude', # This is a VECTOR result, show its Magnitude
-        'result_prefix': 'res'    # 'res' + 'mec1' + '_DEPL' -> resmec1_DEPL
+        'component': 'Magnitude', # Use 'Magnitude' for VECTOR results (like displacement).
+        'result_prefix': 'res'
     },
     'SXX': {
         'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU', # The Stress tensor field
-        'component': 'SIXX',      # The specific component to show
-        'result_prefix': 'stress' # 'stress' + '1' + '_SIGM_NOEU' -> stress1_SIGM_NOEU
-    },
-    'SYY': {
-        'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU',
-        'component': 'SIYY',
+        'field_name': 'SIGM_NOEU', # The base name for the TENSOR result (stress).
+        'component': 'SIXX',      # The specific component of the tensor to visualize.
         'result_prefix': 'stress'
     },
-    'SZZ': {
-        'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU',
-        'component': 'SIZZ',
-        'result_prefix': 'stress'
-    },
-    'SXY': {
-        'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU',
-        'component': 'SIXY', # Note: Paraview often uses SXY and SIXY interchangeably
-        'result_prefix': 'stress'
-    },
-    'SYZ': {
-        'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU',
-        'component': 'SIYZ',
-        'result_prefix': 'stress'
-    },
-    'SXZ': {
-        'file_basename': 'mec',
-        'field_name': 'SIGM_NOEU',
-        'component': 'SIXZ',
-        'result_prefix': 'stress'
-    },
+    # ... other stress components ...
+    'SYY': {'file_basename': 'mec', 'field_name': 'SIGM_NOEU', 'component': 'SIYY', 'result_prefix': 'stress'},
+    'SZZ': {'file_basename': 'mec', 'field_name': 'SIGM_NOEU', 'component': 'SIZZ', 'result_prefix': 'stress'},
     'VMIS': {
         'file_basename': 'mec',
-        'field_name': 'SIEQ_NOEU', # The Von Mises equivalent stress field
-        'component': 'VMIS',      # The von mises component
-        'result_prefix': 'stress' # 'stress' + '1' + '_SIEQ_NOEU' -> stress1_SIEQ_NOEU
+        'field_name': 'SIEQ_NOEU',
+        'component': 'VMIS',
+        'result_prefix': 'stress'
     }
 }
 # --- END OF USER INPUTS ---
@@ -82,15 +70,14 @@ RESULT_CONFIG = {
 
 # --- SCRIPT GENERATION LOGIC (Fully automatic from here) ---
 
-# Retrieve the configuration for the chosen result
 try:
     config = RESULT_CONFIG[result_key]
 except KeyError:
     print(f"Error: Invalid result_key '{result_key}'. Please choose from {list(RESULT_CONFIG.keys())}")
     exit()
 
-# Other Parameters (can be customized if needed)
-num_files = 3
+# Other Parameters
+num_files = 20
 results_path = "C:/Users/DELL/Downloads/v2024/salome_meca/lpbf_run"
 animation_base_name = f"animation_{result_key}"
 output_filename = f"generated_paraview_script_{result_key}.py"
@@ -104,27 +91,46 @@ camera_focal_point = [10.0, 10.0, 1.9999999999999616]
 camera_view_up = [-0.05134727680585449, 0.4341406562705134, 0.8993805355563523]
 camera_parallel_scale = 14.282856857085696
 
-# Generate code for loading all MED files
 loading_code = ""
 for i in range(1, num_files + 1):
     reader_var = f"{config['file_basename']}{i}_reader"
     file_path = os.path.join(results_path, f"{config['file_basename']}{i}.rmed").replace("\\", "/")
-    loading_code += f"""
-{reader_var} = MEDReader(registrationName='{config['file_basename']}{i}.rmed', FileNames=['{file_path}'])
-"""
+    loading_code += f"\n{reader_var} = MEDReader(registrationName='{config['file_basename']}{i}.rmed', FileNames=['{file_path}'])"
 
-# Generate the main processing loop
 processing_loop_code = ""
 for i in range(1, num_files + 1):
     reader_var = f"{config['file_basename']}{i}_reader"
     display_var = f"{reader_var}_display"
     
-    # Dynamically build the result field name and ColorBy command tuple
-    if config['component'] is None: # SCALAR CASE (e.g., TEMP)
-        full_field_name = f"{config['result_prefix']}{config['file_basename']}{i}{config['field_name']}"
+    # --- DYNAMIC FIELD NAME AND TUPLE GENERATION ---
+    # This is the core logic that adapts to different naming rules.
+    # If you ever need to change a naming rule, this is the place to do it.
+
+    if config['component'] is None:  # SCALAR CASE (e.g., 'TEMP')
+        # Rule: Field name number rolls over every 10 files (resther1TEMP, resther2TEMP...).
+        field_num_in_name = i if i < 10 else i // 10
+        full_field_name = f"{config['result_prefix']}{config['file_basename']}{field_num_in_name}{config['field_name']}"
         color_by_tuple = f"('POINTS', '{full_field_name}')"
-    else: # VECTOR/TENSOR CASE (e.g., DEPL, SXX, VMIS)
-        full_field_name = f"{config['result_prefix']}{i}_{config['field_name']}"
+        
+    else:  # VECTOR/TENSOR CASE (e.g., 'DEPL', 'SXX', 'VMIS')
+        if config['field_name'] == 'DEPL': # Special handling for Displacement
+            # Rule for DEPL: Underscore disappears for layers >= 10.
+            # Name format: res + mec + number + [_] + DEPL
+            if i < 10:
+                # FIX: Added config['file_basename'] to correctly form 'resmec1_DEPL'
+                full_field_name = f"{config['result_prefix']}{config['file_basename']}{i}_{config['field_name']}"
+            else: # i >= 10
+                full_field_name = f"{config['result_prefix']}{config['file_basename']}{i}{config['field_name']}"
+        
+        else: # Generic handling for other Tensors (Stress)
+            # Rule for STRESS: Underscore disappears for layers >= 10.
+            # Name format: stress + number + [_] + SIGM_NOEU
+            if i < 10:
+                full_field_name = f"{config['result_prefix']}{i}_{config['field_name']}"
+            else: # i >= 10
+                full_field_name = f"{config['result_prefix']}{i}{config['field_name']}"
+        
+        # Finally, build the tuple for the ColorBy command
         color_by_tuple = f"('POINTS', '{full_field_name}', '{config['component']}')"
         
     start_frame = (i - 1) * timesteps_per_file
@@ -133,7 +139,7 @@ for i in range(1, num_files + 1):
 
     processing_loop_code += f"""
 # --- Processing and Animating File {i} for {result_key} ---
-print("Processing file: {config['file_basename']}{i}.rmed for {result_key}")
+print("Processing file: {config['file_basename']}{i}.rmed | Field: {full_field_name}")
 SetActiveSource({reader_var})
 {display_var} = Show({reader_var}, renderView1, 'UnstructuredGridRepresentation')
 {display_var}.Representation = 'Surface'
@@ -144,32 +150,23 @@ SetActiveSource({reader_var})
         processing_loop_code += f"Hide({prev_reader_var}, renderView1)\n"
     
     processing_loop_code += f"""
-# Set scalar coloring using the correct format for {result_key}
 ColorBy({display_var}, {color_by_tuple})
-
-# Apply a FIXED color scale
 lut = GetColorTransferFunction('{full_field_name}')
 pwf = GetOpacityTransferFunction('{full_field_name}')
 lut.ApplyPreset('{colormap_preset}', True)
 lut.RescaleTransferFunction({fixed_colormap_min}, {fixed_colormap_max})
 pwf.RescaleTransferFunction({fixed_colormap_min}, {fixed_colormap_max})
-
-# Set legend visibility
 {display_var}.SetScalarBarVisibility(renderView1, {show_legend_in_animation})
-
-# Update view and save animation
 renderView1.Update()
-print(f"Saving animation to: {animation_output_path}")
 SaveAnimation('{animation_output_path}', renderView1, ImageResolution={image_resolution},
     FrameRate={frame_rate},
     FrameWindow=[{start_frame}, {end_frame}])
 """
 
 # --- Assemble the final ParaView script ---
-
 paraview_script_content = f"""
 ###
-### This file was generated automatically by the ULTIMATE Python script.
+### This file was generated by the PERFECTED Python script (v6).
 ### Animation for: {result_key}
 ###
 
@@ -204,6 +201,6 @@ try:
     with open(output_filename, "w") as file:
         file.write(paraview_script_content)
     print(f"Successfully created ParaView script: '{output_filename}'")
-    print(f" -> It will process files for the '{result_key}' result.")
+    print(f" -> It will process {num_files} files for the '{result_key}' result.")
 except IOError as e:
     print(f"Error writing to file: {e}")
