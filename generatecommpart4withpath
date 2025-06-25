@@ -9,7 +9,7 @@
 # ------------------------------------------------------------------------------
 
 # Total number of layers to simulate
-num_layers = 4
+num_layers = 25
 
 # Output filename for the generated command file
 output_filename = "lpbf_n_layer_cooling.comm"
@@ -17,7 +17,7 @@ output_filename = "lpbf_n_layer_cooling.comm"
 # --- File Paths ---
 # The main directory for input (mesh) and output (results) files.
 # CHANGE THIS ONE PATH and it will update throughout the generated file.
-simulation_path = r'C:/Users/DELL/Downloads/v2024/salome_meca/astk five layer'
+simulation_path = r'C:/Users/DELL/Downloads/v2024/salome_meca/lpbf_run'
 
 # --- Process Parameters (must match your simulation) ---
 time_per_layer = 17  # Cooling time for one layer (s)
@@ -27,8 +27,8 @@ baseplate_temp = 300.0   # Constant temperature of the bottom plate (K)
 # --- Output Units ---
 # The original code uses a simple incremental pattern (81, 91, 82, 92, ...)
 # We will follow this: thermal unit = 80+i, mechanical unit = 90+i
-base_ther_unit = 80
-base_meca_unit = 90
+base_ther_unit = 60
+base_meca_unit = 20
 
 # ------------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ def generate_comm_file():
     # ==========================================================================
     add_line("DEBUT(LANG='FR')\n")
     # Use the centralized path variable for the mesh file
-    add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/Mesh_five_layer.med', UNITE=7)\n")
+    add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/Mesh_1.med', UNITE=7)\n")
     add_line("mesh = LIRE_MAILLAGE(FORMAT='MED', UNITE=7)\n")
 
     # --- Material Properties (copied exactly from the original) ---
@@ -75,6 +75,7 @@ def generate_comm_file():
         model_meca = f"modmeca{i}"
         mat_ther_assign = f"assth{i}"
         list_inst = f"listr{i}"
+        list_res = f"listres{i}"
         bottemp_load = f"bottemp{i}"
         fixmec_load = f"fixmec{i}"
         temp_init_new_layer = f"tmp{i}"
@@ -82,6 +83,8 @@ def generate_comm_file():
         mat_meca_assign = f"assmec{i}"
         res_meca = f"resmec{i}"
         stress = f"stress{i}"
+        name_ther_res = f"ther{i}"
+        name_mec_res = f"mec{i}"
 
         # --- Variables from previous step (i-1) ---
         prev_res_ther = f"resther{i-1}"
@@ -97,9 +100,10 @@ def generate_comm_file():
         add_line(f"{mat_ther_assign} = AFFE_MATERIAU(MAILLAGE=mesh, AFFE=_F(GROUP_MA={active_groups_str}, MATER=mater1))\n")
 
         # --- Time list and Loads ---
-        add_line(f"{list_inst} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=1e-3))")
-        add_line(f"{bottemp_load} = AFFE_CHAR_THER(MODELE={model_ther}, TEMP_IMPO=_F(GROUP_MA=('bottom', ), TEMP={baseplate_temp}))")
-        add_line(f"{fixmec_load} = AFFE_CHAR_MECA(MODELE={model_meca}, DDL_IMPO=_F(BLOCAGE=('DEPLACEMENT', ), GROUP_MA=('bottom', )))\n")
+        add_line(f"{list_inst} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=1))")
+        add_line(f"{list_res} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=1))")
+        add_line(f"{bottemp_load} = AFFE_CHAR_THER(MODELE={model_ther}, TEMP_IMPO=_F(GROUP_NO=('bottom', ), TEMP={baseplate_temp}))")
+        add_line(f"{fixmec_load} = AFFE_CHAR_MECA(MODELE={model_meca}, DDL_IMPO=_F(BLOCAGE=('DEPLACEMENT', ), GROUP_NO=('bottom', )))\n")
         
         # --- Create high-temperature field for the newly activated layer ---
         add_line(f"# Initial temperature field for the new layer")
@@ -129,7 +133,17 @@ def generate_comm_file():
             add_line(f"{field_depl_new} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='AFFE', TYPE_CHAM='NOEU_DEPL_R', AFFE=_F(GROUP_MA=('layer{i}', ), NOM_CMP=('DX', 'DY', 'DZ'), VALE=(0.0, 0.0, 0.0)))")
             add_line(f"{field_depl_ext} = CREA_CHAMP(OPERATION='EXTR', TYPE_CHAM='NOEU_DEPL_R', RESULTAT={prev_res_meca}, INST={time_start}, NOM_CHAM='DEPL')")
             add_line(f"{field_depl_init} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='ASSE', TYPE_CHAM='NOEU_DEPL_R', ASSE=(_F(CHAM_GD={field_depl_new}, GROUP_MA=('layer{i}', )), _F(CHAM_GD={field_depl_ext}, GROUP_MA={prev_active_groups_str})))")
-            etat_init_meca_str = f"ETAT_INIT=_F(DEPL={field_depl_init}),"
+            
+            # Stress fields
+            field_stress_new = f"strfield{i}_1"
+            field_stress_ext = f"strfield{i}_2"
+            field_stress_init = f"strfield{i}_3"
+            add_line(f"{field_stress_new} = CREA_CHAMP(AFFE=_F(GROUP_MA=('layer{i}', ), NOM_CMP=('SIXX', 'SIYY', 'SIZZ', 'SIXY', 'SIXZ', 'SIYZ'), VALE=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)), MODELE={model_meca}, OPERATION='AFFE', PROL_ZERO='OUI', TYPE_CHAM='ELGA_SIEF_R')")
+            add_line(f"{field_stress_ext} = CREA_CHAMP(INST={time_start}, NOM_CHAM='SIEF_ELGA', OPERATION='EXTR', RESULTAT={prev_res_meca}, TYPE_CHAM='ELGA_SIEF_R')")
+            add_line(f"{field_stress_init} = CREA_CHAMP(MODELE={model_meca}, OPERATION='ASSE', TYPE_CHAM='ELGA_SIEF_R', ASSE=(_F(CHAM_GD={field_stress_new}, GROUP_MA=('layer{i}', )), _F(CHAM_GD={field_stress_ext}, GROUP_MA={prev_active_groups_str})))")
+
+            etat_init_meca_str = f"ETAT_INIT=_F(DEPL={field_depl_init}, SIGM={field_stress_init}),"
+            
             add_line(f"# --- End State Transfer --- \n")
 
         # --- THER_NON_LINE (Cooling analysis) ---
@@ -173,10 +187,10 @@ def generate_comm_file():
         impr_meca_options = f"RESULTAT={stress}, TOUT_CHAM='OUI'" if i == 1 else f"RESULTAT={stress}"
         
         # Use the centralized path variable for the result files
-        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{res_ther}.rmed', UNITE={ther_unit})\n")
-        add_line(f"IMPR_RESU(UNITE={ther_unit}, RESU=_F(LIST_INST={list_inst}, {impr_ther_options}))")
-        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{res_meca}.rmed', UNITE={meca_unit})\n")
-        add_line(f"IMPR_RESU(UNITE={meca_unit}, RESU=(_F(LIST_INST={list_inst}, NOM_CHAM=('DEPL',), RESULTAT={res_meca}), _F(LIST_INST={list_inst}, {impr_meca_options})))")
+        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{name_ther_res}.rmed', UNITE={ther_unit})\n")
+        add_line(f"IMPR_RESU(UNITE={ther_unit}, RESU=_F(LIST_INST={list_res}, {impr_ther_options}))")
+        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{name_mec_res}.rmed', UNITE={meca_unit})\n")
+        add_line(f"IMPR_RESU(UNITE={meca_unit}, RESU=(_F(LIST_INST={list_res}, NOM_CHAM=('DEPL',), RESULTAT={res_meca}), _F(LIST_INST={list_res}, {impr_meca_options})))")
 
     # ==========================================================================
     # 3. Finalization
