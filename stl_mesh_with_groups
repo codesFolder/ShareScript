@@ -1,0 +1,167 @@
+# =============================================================================
+#  SALOME SCRIPT GENERATOR (GEOMETRY, GROUPS, MESH - FINAL VERSION)
+#  This script WRITES another Python script that you can run in Salome.
+#
+#  INSTRUCTIONS:
+#  1. Edit the variables in the '--- CONFIGURATION ---' sections below.
+#  2. Run this Python script.
+#  3. Load and run the new file inside Salome. This version is rebuilt for
+#     correctness and should perform the full workflow.
+# =============================================================================
+
+# --- GEOMETRY & PARTITION CONFIGURATION ---
+STL_FILE_PATH = "C:/Users/DELL/Downloads/v2024/salome_meca/lpbf_run/cut1.stl"
+NUMBER_OF_DIVISIONS = 50 # Change as needed
+
+# --- MESHING CONFIGURATION ---
+MESH_MAX_SIZE = 10.0
+MESH_MIN_SIZE = 0.0
+MESH_SIZE_FACTOR = 5.0
+
+# --- OUTPUT FILE ---
+OUTPUT_FILENAME = "salome_full_workflow_script.py"
+
+# --- MAIN SCRIPT (No need to edit below this line) ---
+
+def generate_script():
+    """Generates the full Salome script for geometry, grouping, and meshing."""
+
+    print("--- Salome Full Workflow Script Generator (Rebuilt & Corrected) ---")
+    
+    stl_path_for_salome = STL_FILE_PATH.replace('\\', '/')
+    print(f"Generating script file named '{OUTPUT_FILENAME}'...")
+
+    # Build the content of the new script file.
+    script_content = f"""#!/usr/bin/env python
+#
+# This file was generated automatically.
+# It performs the full workflow: Geom -> Groups -> Mesh -> Mesh Groups.
+#
+import sys
+import salome
+
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+###
+### GEOM component
+###
+import GEOM
+from salome.geom import geomBuilder
+import math
+import SALOMEDS
+
+geompy = geomBuilder.New()
+
+print("--- Starting GEOM component ---")
+
+# 1. Import and heal STL
+print("Importing STL and creating solid...")
+final_solid = geompy.UnionFaces(geompy.RemoveExtraEdges(geompy.RemoveInternalFaces(geompy.MakeSolid([geompy.MakeShell([geompy.ImportSTL(r"{stl_path_for_salome}")])])), False))
+geompy.addToStudy(final_solid, 'final_solid')
+
+# 2. Partition the geometry
+print("Partitioning solid into {NUMBER_OF_DIVISIONS} layers...")
+b_box = geompy.BoundingBox(final_solid)
+z_min, z_max = b_box[2], b_box[5]
+layer_thickness = (z_max - z_min) / {NUMBER_OF_DIVISIONS}
+
+cutting_tools = []
+for i in range(1, {NUMBER_OF_DIVISIONS}):
+    z_pos = z_min + (i * layer_thickness)
+    plane = geompy.MakePlaneLCS(None, 2000, 1)
+    translated_plane = geompy.MakeTranslation(plane, 0, 0, z_pos)
+    cutting_tools.append(translated_plane)
+
+Partition_1 = geompy.MakePartition([final_solid], cutting_tools, [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+geompy.addToStudy(Partition_1, 'Partition_1')
+print("Partition complete.")
+
+# --- GEOM GROUP CREATION ---
+print("--- Creating GEOM groups ---")
+
+# 3. Create FACE group for the bottom
+all_faces_in_part = geompy.SubShapeAll(Partition_1, geompy.ShapeType["FACE"])
+bottom_face_ids = []
+for face in all_faces_in_part:
+    coords = geompy.PointCoordinates(geompy.MakeCDG(face))
+    if abs(coords[2] - z_min) < 1e-5:
+        bottom_face_ids.append(geompy.GetSubShapeID(Partition_1, face))
+
+bottom_surface_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["FACE"])
+geompy.UnionIDs(bottom_surface_group, bottom_face_ids)
+geompy.addToStudy(bottom_surface_group, "bottom_surface")
+print("Created GEOM group 'bottom_surface'")
+
+# 4. Create VOLUME groups for each layer
+all_solids_in_part = geompy.SubShapeAll(Partition_1, geompy.ShapeType["SOLID"])
+layers_with_z = sorted([(geompy.PointCoordinates(geompy.MakeCDG(s))[2], s) for s in all_solids_in_part])
+
+volume_geom_groups = []
+for i, (z, shape) in enumerate(layers_with_z):
+    group_name = f"layer_{{i + 1}}"
+    layer_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["SOLID"])
+    geompy.UnionIDs(layer_group, [geompy.GetSubShapeID(Partition_1, shape)])
+    geompy.addToStudy(layer_group, group_name)
+    volume_geom_groups.append(layer_group)
+    print(f"Created GEOM group: {{group_name}}")
+
+print("GEOM component finished.")
+
+###
+### SMESH component
+###
+print("\\n--- Starting SMESH component ---")
+import SMESH
+from salome.smesh import smeshBuilder
+smesh = smeshBuilder.New()
+
+# 1. Create Mesh on the Partition
+Mesh_1 = smesh.Mesh(Partition_1)
+
+# 2. Define 3D Algorithm (GMSH) and Parameters
+GMSH_algo = Mesh_1.Tetrahedron(algo=smeshBuilder.GMSH)
+Gmsh_Params = GMSH_algo.Parameters()
+Gmsh_Params.SetMaxSize({MESH_MAX_SIZE})
+Gmsh_Params.SetMinSize({MESH_MIN_SIZE})
+Gmsh_Params.SetSizeFactor({MESH_SIZE_FACTOR})
+print("Assigned GMSH algorithm and parameters.")
+
+# 3. Create Mesh Groups from GEOM Groups
+print("Creating mesh groups from GEOM groups...")
+bottom_surface_mesh_group = Mesh_1.GroupOnGeom(bottom_surface_group, 'bottom_surface', SMESH.FACE)
+print("  - Created mesh group 'bottom_surface'")
+
+for i, geom_group in enumerate(volume_geom_groups):
+    group_name = f"layer_{{i + 1}}"
+    mesh_vol_group = Mesh_1.GroupOnGeom(geom_group, group_name, SMESH.VOLUME)
+    print(f"  - Created mesh group '{{group_name}}'")
+
+# 4. Compute the Mesh
+print("Computing the mesh...")
+isDone = Mesh_1.Compute()
+if isDone:
+    print("Mesh computed successfully.")
+else:
+    print("ERROR: Mesh computation failed.")
+
+# --- Finalize ---
+if salome.sg.hasDesktop():
+  salome.sg.updateObjBrowser()
+
+print("\\nFull workflow script finished execution.")
+"""
+
+    # Write the content to the file
+    try:
+        with open(OUTPUT_FILENAME, "w") as f:
+            f.write(script_content)
+        print(f"\nSUCCESS: Created the Salome script file named '{OUTPUT_FILENAME}'")
+    except Exception as e:
+        print(f"\nERROR: Could not write to file. {e}")
+
+
+# --- Run the generator function ---
+if __name__ == "__main__":
+    generate_script()
