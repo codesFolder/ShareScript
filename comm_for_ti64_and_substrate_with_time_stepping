@@ -1,0 +1,263 @@
+# ==============================================================================
+#      Code_Aster Command File Generator for N-Layer Cooling Simulation
+# ==============================================================================
+# ... (script description) ...
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# USER-DEFINED PARAMETERS
+# ------------------------------------------------------------------------------
+
+# Total number of layers to simulate
+num_layers = 20
+
+# Output filename for the generated command file
+output_filename = "lpbf_n_layer_cooling.comm"
+
+# --- File Paths ---
+# The main directory for input (mesh) and output (results) files.
+# CHANGE THIS ONE PATH and it will update throughout the generated file.
+simulation_path = r'C:/Users/DELL/Downloads/v2024/salome_meca/lpbf_run'
+
+# --- Process Parameters (must match your simulation) ---
+time_per_layer = 10  # Cooling time for one layer (s)
+initial_melt_temp = 1605.0 # Temperature of a newly activated layer (K)
+baseplate_temp = 373.15   # Constant temperature of the bottom plate (K)
+
+# --- Output Units ---
+# We will follow this: thermal unit = 60+i, mechanical unit = 20+i
+base_ther_unit = 60
+base_meca_unit = 20
+
+# ------------------------------------------------------------------------------
+
+def generate_comm_file():
+    """Main function to generate the .comm file."""
+
+    # Use a list to build the file content as strings
+    comm_file_content = []
+
+    def add_line(text):
+        """Helper to add a line to the content list."""
+        comm_file_content.append(text)
+
+    # ==========================================================================
+    # 1. Preamble and One-Time Definitions
+    # ==========================================================================
+    add_line("DEBUT(LANG='FR')\n")
+    add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/Mesh_1.med', UNITE=7)\n")
+    add_line("mesh = LIRE_MAILLAGE(FORMAT='MED', UNITE=7)\n")
+
+    # ### MODIFICATION START: Add a low-temperature anchor point to all material functions ###
+    add_line("# --- Material and Function Definitions ---")
+    add_line("youngmo1 = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 107000.0, 293.15, 107000.0, 373.15, 103400.0, 473.15, 99510.0, 573.15, 93710.0, 673.15, 85500.0, 773.15, 74710.0, 873.15, 61840.0, 973.15, 48160.0, 1073.15, 35290.0, 1173.15, 24500.0, 1273.15, 16290.0, 1373.15, 10490.0, 1473.15, 6610.0, 1573.15, 4106.0, 1673.15, 2528.0, 1773.15, 1547.0, 1873.15, 943.5, 1878.15, 1.0))")
+    add_line("poiss1 = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 0.323, 293.15, 0.323, 373.15, 0.328, 473.15, 0.334, 573.15, 0.339, 673.15, 0.345, 773.15, 0.351, 873.15, 0.357, 973.15, 0.363, 1073.15, 0.369, 1173.15, 0.374, 1273.15, 0.380, 1373.15, 0.386, 1473.15, 0.392, 1573.15, 0.398, 1673.15, 0.403, 1773.15, 0.409, 1873.15, 0.415))")
+    add_line("alpha1 = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 6.5e-06, 40.0, 6.5e-06, 100.0, 7.1e-06, 293.0, 8.9e-06, 400.0, 9.7e-06, 600.0, 1.08e-05, 800.0, 1.14e-05, 900.0, 1.16e-05, 1100.0, 1.16e-05))")
+    add_line("rho1 = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 4.405e-09, 293.15, 4.405e-09, 1500.15, 4.243e-09, 2050.15, 4.189e-09, 2150.15, 3.865e-09, 2400.15, 3.730e-09, 2773.15, 3.730e-09))")
+    add_line("kappa_X = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 8.11, 293.15, 8.11, 373.15, 7.74, 473.15, 7.52, 573.15, 7.55, 673.15, 7.81, 773.15, 8.29, 873.15, 8.96, 973.15, 9.81, 1073.15, 10.82, 1173.15, 11.98, 1273.15, 13.26, 1373.15, 14.65, 1473.15, 16.13, 1573.15, 17.69, 1673.15, 19.29, 1773.15, 20.93, 1873.15, 22.6, 1923.15, 28.53, 1973.15, 29.45, 2073.15, 31.28, 2173.15, 33.11, 2223.15, 34.02))")
+    add_line("kappa_Y = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 8.11, 293.15, 8.11, 373.15, 7.74, 473.15, 7.52, 573.15, 7.55, 673.15, 7.81, 773.15, 8.29, 873.15, 8.96, 973.15, 9.81, 1073.15, 10.82, 1173.15, 11.98, 1273.15, 13.26, 1373.15, 14.65, 1473.15, 16.13, 1573.15, 17.69, 1673.15, 19.29, 1773.15, 20.93, 1873.15, 22.6, 1923.15, 28.53, 1973.15, 29.45, 2073.15, 31.28, 2173.15, 33.11, 2223.15, 34.02))")
+    add_line("kappa_Z = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 7.01, 293.15, 7.01, 373.15, 7.34, 473.15, 8.02, 573.15, 8.95, 673.15, 10.07, 773.15, 11.36, 873.15, 12.75, 973.15, 14.21, 1073.15, 15.68, 1173.15, 17.14, 1273.15, 18.52, 1373.15, 19.78, 1473.15, 20.88, 1573.15, 21.77, 1673.15, 22.42, 1773.15, 22.76, 1873.15, 22.76, 1923.15, 28.53, 1973.15, 29.45, 2073.15, 31.28, 2173.15, 33.11, 2223.15, 34.02))")
+    add_line("rhocp1 = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 2.56e-03, 300.0, 2.56e-03, 400.0, 2.64e-03, 500.0, 2.72e-03, 600.0, 2.81e-03, 700.0, 2.91e-03, 800.0, 3.01e-03, 900.0, 3.11e-03, 1000.0, 3.22e-03, 1100.0, 3.32e-03, 1200.0, 3.42e-03, 1300.0, 3.50e-03, 1400.0, 3.57e-03, 1500.0, 3.63e-03, 1600.0, 3.67e-03, 1700.0, 3.70e-03, 1800.0, 3.70e-03, 1900.0, 3.70e-03, 1950.0, 3.70e-03))")
+    add_line("sy_vs_temp = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 1098.0, 293.15, 1098.0, 477.15, 844.0, 700.15, 663.0, 811.15, 527.0, 1088.15, 60.0, 1217.15, 21.0, 1878.15, 0.1))")
+    add_line("harden_mod = DEFI_FONCTION(NOM_PARA='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE=(1.0, 1332.0, 293.15, 1332.0, 477.15, 1207.0, 700.15, 1033.0, 811.15, 943.0, 1088.15, 708.0, 1217.15, 596.0, 1878.15, 0.1))")
+    # ### MODIFICATION END ###   
+    
+    add_line("""mater1 = DEFI_MATERIAU(
+    ELAS_FO=_F(
+        E=youngmo1,
+        NU=poiss1,
+        RHO=rho1,
+        ALPHA=alpha1,
+        TEMP_DEF_ALPHA=293.0,
+    ),
+    THER_NL_ORTH=_F(
+        RHO_CP=rhocp1,
+        LAMBDA_L=kappa_X,
+        LAMBDA_T=kappa_Y,
+        LAMBDA_N=kappa_Z,
+    ),
+    ECRO_LINE_FO=_F(
+        SY=sy_vs_temp,
+        D_SIGM_EPSI=harden_mod,
+    ),
+)\n""")
+
+    # ==========================================================================
+    # 2. Loop to Generate Commands for Each Layer
+    # ==========================================================================
+    for i in range(1, num_layers + 1):
+        add_line(f"\n# --- Layer {i} --- #\n")
+    
+        # --- Dynamic variable names ---
+        # These are the same as your original script
+        model_ther = f"model{i}"
+        model_meca = f"modmeca{i}"
+        mat_ther_assign = f"assth{i}"
+        list_inst = f"listr{i}"
+        list_res = f"listres{i}"
+        bottemp_load = f"bottemp{i}"
+        fixmec_load = f"fixmec{i}"
+        temp_init_new_layer = f"tmp{i}"
+        res_ther = f"resther{i}"
+        mat_meca_assign = f"assmec{i}"
+        res_meca = f"resmec{i}"
+        stress = f"stress{i}"
+        name_ther_res = f"ther{i}"
+        name_mec_res = f"mec{i}"
+        prev_res_ther = f"resther{i-1}"
+        prev_res_meca = f"resmec{i-1}"
+    
+        # --- Time definition for current layer ---
+        time_start = (i - 1) * time_per_layer
+        time_end = i * time_per_layer
+        
+        # ### MODIFICATION START ###
+        # This section is the primary fix for the error.
+        # We now create two lists of groups:
+        # 1. 'physical_groups': These have material properties (layers and substrate elements).
+        # 2. 'model_groups': These include the physical groups AND the boundary face groups.
+    
+        # 1. Define groups that have physical properties (material assigned to them)
+        physical_groups_list = [f"'layer{j}'" for j in range(1, i + 1)]
+        physical_groups_list.append("'substrate'")
+        physical_groups_str = f"({', '.join(physical_groups_list)}, )"
+    
+        # 2. Define ALL groups that the model needs to be aware of.
+        # This includes the physical groups plus the face groups for boundary conditions.
+        model_groups_list = physical_groups_list + ["'bottoms'", "'sides'", "'tops'"]
+        model_groups_str = f"({', '.join(model_groups_list)}, )"
+        # ### MODIFICATION END ###
+    
+        # --- AFFE_MODELE and AFFE_MATERIAU ---
+        # The model is defined on ALL groups it needs to know about.
+        add_line(f"{model_ther} = AFFE_MODELE(MAILLAGE=mesh, AFFE=_F(GROUP_MA={model_groups_str}, PHENOMENE='THERMIQUE', MODELISATION='3D'))")
+        add_line(f"{model_meca} = AFFE_MODELE(MAILLAGE=mesh, AFFE=_F(GROUP_MA={model_groups_str}, PHENOMENE='MECANIQUE', MODELISATION='3D'))")
+        # Material is only assigned to the physical element groups.
+        add_line(f"{mat_ther_assign} = AFFE_MATERIAU(MAILLAGE=mesh, AFFE=_F(GROUP_MA={physical_groups_str}, MATER=mater1))\n")
+    
+        # --- Time list and Loads ---
+        # Time definition for current layer.
+        time_start = (i - 1) * time_per_layer
+        time_end = i * time_per_layer
+        # Use a tiny time step for the first 0.1 seconds, then a larger one.
+        add_line(f"{list_inst} = DEFI_LIST_REEL(DEBUT={time_start},")
+        add_line(f"                         INTERVALLE=(_F(JUSQU_A={time_start + 0.1}, PAS=0.001),")
+        add_line(f"                                      _F(JUSQU_A={time_end}, PAS=0.1),),)")
+        add_line(f"{list_res} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=0.5))")
+        
+        
+        add_line(f"{bottemp_load} = AFFE_CHAR_THER(MODELE={model_ther}, ECHANGE=_F(GROUP_MA=('sides', 'tops'), COEF_H=10.0, TEMP_EXT=373.15), TEMP_IMPO=_F(GROUP_MA=('bottoms', ), TEMP={baseplate_temp}))")
+        add_line(f"{fixmec_load} = AFFE_CHAR_MECA(MODELE={model_meca}, DDL_IMPO=_F(BLOCAGE=('DEPLACEMENT', ), GROUP_MA=('bottoms', )))\n")
+        
+        # --- Create high-temperature field for the newly activated layer ---
+        add_line(f"# Initial temperature field for the new layer")
+        add_line(f"{temp_init_new_layer} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='AFFE', TYPE_CHAM='NOEU_TEMP_R', AFFE=_F(GROUP_MA=('layer{i}', ), NOM_CMP=('TEMP', ), VALE=({initial_melt_temp}, )))\n")
+    
+        # --- Prepare ETAT_INIT for thermal and mechanical steps ---
+        if i == 1:
+            # ### MODIFICATION START ###
+            # For the first step, we must define the initial temperature of the substrate.
+            add_line("# For layer 1, assemble the hot new layer with the pre-heated substrate")
+            add_line(f"tmp_substrate = CREA_CHAMP(MAILLAGE=mesh, OPERATION='AFFE', TYPE_CHAM='NOEU_TEMP_R', AFFE=_F(GROUP_MA=('substrate',), NOM_CMP=('TEMP',), VALE=({baseplate_temp},)))")
+            add_line(f"fieldini1 = CREA_CHAMP(MAILLAGE=mesh, OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', ASSE=(_F(CHAM_GD={temp_init_new_layer}, GROUP_MA=('layer1',)), _F(CHAM_GD=tmp_substrate, GROUP_MA=('substrate',))))")
+            etat_init_ther_str = f"ETAT_INIT=_F(CHAM_NO=fieldini1),"
+            # ### MODIFICATION END ###
+            etat_init_meca_str = ""
+        else:
+            add_line(f"# --- State Transfer from Layer {i-1} to Layer {i} ---")
+            
+            # ### MODIFICATION START ###
+            # The groups that contain the results from the previous step are only the physical elements.
+            prev_physical_groups_list = [f"'layer{j}'" for j in range(1, i)]
+            prev_physical_groups_list.append("'substrate'")
+            prev_physical_groups_str = f"({', '.join(prev_physical_groups_list)}, )"
+            # ### MODIFICATION END ###
+            
+            # --- Thermal State Transfer ---
+            temp_ext = f"tmpext{i-1}"
+            temp_init_combined = f"fieldini{i}"
+            add_line(f"{temp_ext} = CREA_CHAMP(OPERATION='EXTR', TYPE_CHAM='NOEU_TEMP_R', RESULTAT={prev_res_ther}, INST={time_start}, NOM_CHAM='TEMP')")
+            add_line(f"{temp_init_combined} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='ASSE', TYPE_CHAM='NOEU_TEMP_R', ASSE=(_F(CHAM_GD={temp_ext}, GROUP_MA={prev_physical_groups_str}), _F(CHAM_GD={temp_init_new_layer}, GROUP_MA=('layer{i}', ))))")
+            etat_init_ther_str = f"ETAT_INIT=_F(CHAM_NO={temp_init_combined}),"
+            
+            # --- Mechanical State Transfer ---
+            field_depl_new = f"field{i}_1"
+            field_depl_ext = f"field{i}_2"
+            field_depl_init = f"field{i}_3"
+            add_line(f"{field_depl_new} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='AFFE', TYPE_CHAM='NOEU_DEPL_R', AFFE=_F(GROUP_MA=('layer{i}', ), NOM_CMP=('DX', 'DY', 'DZ'), VALE=(0.0, 0.0, 0.0)))")
+            add_line(f"{field_depl_ext} = CREA_CHAMP(OPERATION='EXTR', TYPE_CHAM='NOEU_DEPL_R', RESULTAT={prev_res_meca}, INST={time_start}, NOM_CHAM='DEPL')")
+            add_line(f"{field_depl_init} = CREA_CHAMP(MAILLAGE=mesh, OPERATION='ASSE', TYPE_CHAM='NOEU_DEPL_R', ASSE=(_F(CHAM_GD={field_depl_new}, GROUP_MA=('layer{i}', )), _F(CHAM_GD={field_depl_ext}, GROUP_MA={prev_physical_groups_str})))")
+            
+            # Stress fields
+            field_stress_new = f"strfield{i}_1"
+            field_stress_ext = f"strfield{i}_2"
+            field_stress_init = f"strfield{i}_3"
+            add_line(f"{field_stress_new} = CREA_CHAMP(AFFE=_F(GROUP_MA=('layer{i}', ), NOM_CMP=('SIXX', 'SIYY', 'SIZZ', 'SIXY', 'SIXZ', 'SIYZ'), VALE=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)), MODELE={model_meca}, OPERATION='AFFE', PROL_ZERO='OUI', TYPE_CHAM='ELGA_SIEF_R')")
+            add_line(f"{field_stress_ext} = CREA_CHAMP(INST={time_start}, NOM_CHAM='SIEF_ELGA', OPERATION='EXTR', RESULTAT={prev_res_meca}, TYPE_CHAM='ELGA_SIEF_R')")
+            add_line(f"{field_stress_init} = CREA_CHAMP(MODELE={model_meca}, OPERATION='ASSE', TYPE_CHAM='ELGA_SIEF_R', ASSE=(_F(CHAM_GD={field_stress_new}, GROUP_MA=('layer{i}', )), _F(CHAM_GD={field_stress_ext}, GROUP_MA={prev_physical_groups_str})))")
+    
+            etat_init_meca_str = f"ETAT_INIT=_F(DEPL={field_depl_init}, SIGM={field_stress_init}),"
+            
+            add_line(f"# --- End State Transfer --- \n")
+    
+        # --- THER_NON_LINE (Cooling analysis) ---
+        add_line(f"""{res_ther} = THER_NON_LINE(
+                         MODELE={model_ther},
+                         CHAM_MATER={mat_ther_assign},
+                         {etat_init_ther_str}
+                         EXCIT=_F(CHARGE=({bottemp_load})),
+                         INCREMENT=_F(LIST_INST={list_inst}),
+                         CONVERGENCE=_F(ITER_GLOB_MAXI=50, RESI_GLOB_RELA=0.0001),
+                         NEWTON=_F(REAC_ITER=1),
+                         RECH_LINEAIRE=_F(ITER_LINE_MAXI=50),
+                         SOLVEUR=_F(MATR_DISTRIBUEE='OUI', METHODE='MUMPS'))\n""")
+    
+        # --- STAT_NON_LINE (Thermal stress analysis) ---
+        add_line(f"""{mat_meca_assign} = AFFE_MATERIAU(
+                         MAILLAGE=mesh,
+                         MODELE={model_meca},
+                         AFFE=_F(GROUP_MA={physical_groups_str}, MATER=(mater1, )),
+                         AFFE_VARC=_F(EVOL={res_ther}, NOM_VARC='TEMP', PROL_DROITE='CONSTANT', PROL_GAUCHE='CONSTANT', VALE_REF=300.0))\n""")
+    
+        add_line(f"""{res_meca} = STAT_NON_LINE(
+                        MODELE={model_meca},
+                        CHAM_MATER={mat_meca_assign},
+                        {etat_init_meca_str}
+                        EXCIT=_F(CHARGE={fixmec_load}),
+                        COMPORTEMENT=_F(DEFORMATION='PETIT', RELATION='VMIS_ISOT_LINE'),
+                        CONVERGENCE=_F(ITER_GLOB_MAXI=50, RESI_GLOB_RELA=0.0001),
+                        INCREMENT=_F(LIST_INST={list_inst}),
+                        NEWTON=_F(REAC_ITER=3),
+                        RECH_LINEAIRE=_F(ITER_LINE_MAXI=50),
+                        SOLVEUR=_F(MATR_DISTRIBUEE='OUI', METHODE='MUMPS'))\n""")
+    
+        # --- CALC_CHAMP and IMPR_RESU ---
+        add_line(f"{stress} = CALC_CHAMP(RESULTAT={res_meca}, CONTRAINTE=('SIGM_NOEU', ), CRITERES=('SIEQ_NOEU', ))\n")
+        
+        ther_unit = base_ther_unit + i
+        meca_unit = base_meca_unit + i
+        
+        impr_ther_options = f"RESULTAT={res_ther}, TOUT_CHAM='OUI'" if i == 1 else f"RESULTAT={res_ther}"
+        impr_meca_options = f"RESULTAT={stress}, TOUT_CHAM='OUI'" if i == 1 else f"RESULTAT={stress}"
+        
+        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{name_ther_res}.rmed', UNITE={ther_unit})\n")
+        add_line(f"IMPR_RESU(UNITE={ther_unit}, RESU=_F(LIST_INST={list_res}, {impr_ther_options}))")
+        add_line(f"DEFI_FICHIER(ACTION='ASSOCIER', FICHIER=r'{simulation_path}/{name_mec_res}.rmed', UNITE={meca_unit})\n")
+        add_line(f"IMPR_RESU(UNITE={meca_unit}, RESU=(_F(LIST_INST={list_res}, NOM_CHAM=('DEPL',), RESULTAT={res_meca}), _F(LIST_INST={list_res}, {impr_meca_options})))")
+
+    # ==========================================================================
+    # 3. Finalization
+    # ==========================================================================
+    add_line("\nFIN()")
+
+    # --- Write the collected content to the output file ---
+    with open(output_filename, 'w') as f:
+        for line in comm_file_content:
+            f.write(line + '\n')
+    
+    print(f"Successfully generated command file: {output_filename}")
+
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    generate_comm_file()
