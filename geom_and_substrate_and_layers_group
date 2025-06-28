@@ -1,0 +1,166 @@
+# =============================================================================
+#  GENERATOR SCRIPT (V5 - SIMPLE AND RELIABLE VOLUMES)
+#  This script writes a basic Salome script that creates geometry, a substrate,
+#  and ONLY the necessary VOLUME groups (layers and substrate).
+#  There are NO face groups and NO meshing.
+# =============================================================================
+import os
+
+# --- 1. CHOOSE GEOMETRY SOURCE ---
+GEOMETRY_TYPE = 'BOX'  # Options: 'IMPORT', 'BOX'
+
+# --- 2. CONFIGURE THE CHOSEN SOURCE ---
+# Used if GEOMETRY_TYPE is 'IMPORT' (STL, STEP/STP, BREP)
+INPUT_FILE_PATH = "C:/path/to/your/file.stl"
+
+# Used if GEOMETRY_TYPE is 'BOX'
+BOX_LENGTH = 0.5
+BOX_WIDTH = 20.0
+BOX_HEIGHT = 2.0
+
+# --- 3. CONFIGURE THE SUBSTRATE ---
+# Set this to False if you do not want a substrate
+ADD_SUBSTRATE = True 
+SUBSTRATE_HEIGHT = 10.0
+SUBSTRATE_XY_PADDING = 10.0 
+
+# --- 4. CONFIGURE THE PARTITIONING ---
+NUMBER_OF_DIVISIONS = 2
+
+# --- 5. OUTPUT FILE ---
+OUTPUT_FILENAME = "salome_workflow_simple_volumes.py"
+
+# --- MAIN SCRIPT (No need to edit below this line) ---
+
+def generate_script():
+    """Generates the simplified Salome script for volume creation."""
+    print("--- Salome Simple Volume Script Generator ---")
+    
+    # --- Generate geometry creation code ---
+    geom_creation_code = ""
+    if GEOMETRY_TYPE == 'IMPORT':
+        file_path_for_salome = INPUT_FILE_PATH.replace('\\', '/')
+        file_ext = os.path.splitext(INPUT_FILE_PATH)[1].lower()
+        if file_ext == '.stl':
+            geom_creation_code = f'part_solid = geompy.UnionFaces(geompy.RemoveExtraEdges(geompy.RemoveInternalFaces(geompy.MakeSolid([geompy.MakeShell([geompy.ImportSTL(r"{file_path_for_salome}")])])), False))'
+        elif file_ext in ['.step', '.stp']:
+            geom_creation_code = f'part_solid = geompy.MakeSolidFromCompound(geompy.MakeCompound(geompy.ImportSTEP(r"{file_path_for_salome}")))'
+        elif file_ext == '.brep':
+            geom_creation_code = f'part_solid = geompy.ImportBREP(r"{file_path_for_salome}")'
+        else:
+            print(f"ERROR: Unsupported file type '{file_ext}'.")
+            return
+    elif GEOMETRY_TYPE == 'BOX':
+        geom_creation_code = f'part_solid = geompy.MakeBoxDXDYDZ({BOX_LENGTH}, {BOX_WIDTH}, {BOX_HEIGHT})'
+    else:
+        print(f"ERROR: Invalid GEOMETRY_TYPE '{GEOMETRY_TYPE}'.")
+        return
+
+    # --- Assemble the final script ---
+    # This f-string now generates the simplified Target Script
+    script_content = f"""#!/usr/bin/env python
+#
+# TARGET SCRIPT (SIMPLE VOLUMES)
+# This script creates geometry and volume groups only.
+#
+
+import sys
+import salome
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+import GEOM
+from salome.geom import geomBuilder
+geompy = geomBuilder.New()
+
+# --- Hard-coded configuration from the generator ---
+ADD_SUBSTRATE = {ADD_SUBSTRATE}
+SUBSTRATE_HEIGHT = {SUBSTRATE_HEIGHT}
+SUBSTRATE_XY_PADDING = {SUBSTRATE_XY_PADDING}
+NUMBER_OF_DIVISIONS = {NUMBER_OF_DIVISIONS}
+TOLERANCE = 1e-5
+
+# =============================================================================
+# --- 1. GEOMETRY CREATION ---
+# =============================================================================
+print("--- Starting GEOM component ---")
+
+print("Creating initial part solid...")
+{geom_creation_code}
+geompy.addToStudy(part_solid, 'part_solid')
+
+part_bbox = geompy.BoundingBox(part_solid)
+part_z_min, part_z_max = part_bbox[4], part_bbox[5]
+
+solids_to_partition = [part_solid]
+if ADD_SUBSTRATE:
+    print("Preparing substrate...")
+    sub_dx = (part_bbox[1] - part_bbox[0]) + 2 * SUBSTRATE_XY_PADDING
+    sub_dy = (part_bbox[3] - part_bbox[2]) + 2 * SUBSTRATE_XY_PADDING
+    sub_dz = SUBSTRATE_HEIGHT
+    center_x = (part_bbox[0] + part_bbox[1]) / 2.0
+    center_y = (part_bbox[2] + part_bbox[3]) / 2.0
+    substrate_solid = geompy.MakeBoxDXDYDZ(sub_dx, sub_dy, sub_dz)
+    substrate_solid = geompy.MakeTranslation(substrate_solid, center_x - sub_dx/2.0, center_y - sub_dy/2.0, part_z_min - sub_dz)
+    solids_to_partition.append(substrate_solid)
+
+print(f"Preparing cutting planes...")
+cutting_tools = []
+if NUMBER_OF_DIVISIONS > 1:
+    layer_thickness = (part_z_max - part_z_min) / NUMBER_OF_DIVISIONS
+    for i in range(1, NUMBER_OF_DIVISIONS):
+        plane_z = part_z_min + (i * layer_thickness)
+        plane = geompy.MakePlaneLCS(None, 5000, 1)
+        cutting_tools.append(geompy.MakeTranslation(plane, 0, 0, plane_z))
+
+print("Performing final partition...")
+Final_Partition = geompy.MakePartition(solids_to_partition, cutting_tools, [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+geompy.addToStudy(Final_Partition, 'Final_Partition')
+print("Partition complete.")
+
+# =============================================================================
+# --- 2. VOLUME GROUP CREATION ---
+# =============================================================================
+print("\\n--- Creating Volume Groups ---")
+
+all_solids_in_partition = geompy.SubShapeAll(Final_Partition, geompy.ShapeType["SOLID"])
+
+if ADD_SUBSTRATE:
+    substrate_solid_ids = [geompy.GetSubShapeID(Final_Partition, s) for s in all_solids_in_partition if geompy.PointCoordinates(geompy.MakeCDG(s))[2] < part_z_min]
+    if substrate_solid_ids:
+        group = geompy.CreateGroup(Final_Partition, geompy.ShapeType["SOLID"])
+        geompy.UnionIDs(group, substrate_solid_ids)
+        geompy.addToStudyInFather(Final_Partition, group, "substrate_volume")
+        print("Created volume group: 'substrate_volume'")
+
+part_solids = [s for s in all_solids_in_partition if geompy.PointCoordinates(geompy.MakeCDG(s))[2] >= part_z_min]
+layers_with_z = sorted([(geompy.PointCoordinates(geompy.MakeCDG(s))[2], s) for s in part_solids])
+
+for i, (z, shape) in enumerate(layers_with_z):
+    # CORRECTED NAMING: No underscore, as requested.
+    group_name = f"layer{{i + 1}}"
+    group = geompy.CreateGroup(Final_Partition, geompy.ShapeType["SOLID"])
+    geompy.UnionIDs(group, [geompy.GetSubShapeID(Final_Partition, shape)])
+    geompy.addToStudyInFather(Final_Partition, group, group_name)
+    print(f"Created volume group: '{{group_name}}'")
+
+# =============================================================================
+# --- 3. FINALIZE ---
+# =============================================================================
+if salome.sg.hasDesktop():
+    salome.sg.updateObjBrowser()
+
+print("\\nFull workflow script finished execution.")
+"""
+    # Write the final script to a file
+    try:
+        with open(OUTPUT_FILENAME, "w") as f:
+            f.write(script_content.strip())
+        print(f"\nSUCCESS: Created the Salome script file named '{OUTPUT_FILENAME}'")
+    except Exception as e:
+        print(f"\nERROR: Could not write to file. {e}")
+
+# --- Run the generator function ---
+if __name__ == "__main__":
+    generate_script()
