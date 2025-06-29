@@ -9,7 +9,7 @@
 # ------------------------------------------------------------------------------
 
 # Total number of layers to simulate
-num_layers = 20
+num_layers = 5
 
 # Output filename for the generated command file
 output_filename = "lpbf_n_layer_cooling.comm"
@@ -124,9 +124,9 @@ def generate_comm_file():
     
         # --- Time list and Loads ---
         add_line(f"{list_inst} = DEFI_LIST_REEL(DEBUT={time_start},")
-        add_line(f"                         INTERVALLE=(_F(JUSQU_A={time_start + 0.1}, PAS=0.001),")
-        add_line(f"                                      _F(JUSQU_A={time_end}, PAS=0.1),),)")
-        add_line(f"{list_res} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=0.5))")
+        add_line(f"                         INTERVALLE=(_F(JUSQU_A={time_start + 0.1}, PAS=0.01),")
+        add_line(f"                                      _F(JUSQU_A={time_end}, PAS=1),),)")
+        add_line(f"{list_res} = DEFI_LIST_REEL(DEBUT={time_start}, INTERVALLE=_F(JUSQU_A={time_end}, PAS=1))")
         add_line(f"{bottemp_load} = AFFE_CHAR_THER(MODELE={model_ther}, ECHANGE=_F(GROUP_MA=('sides', 'tops'), COEF_H=10.0, TEMP_EXT=373.15), TEMP_IMPO=_F(GROUP_MA=('bottoms', ), TEMP={baseplate_temp}))")
         add_line(f"{fixmec_load} = AFFE_CHAR_MECA(MODELE={model_meca}, DDL_IMPO=_F(BLOCAGE=('DEPLACEMENT', ), GROUP_MA=('bottoms', )))\n")
         
@@ -229,7 +229,7 @@ def generate_comm_file():
     cooldown_start_time = num_layers * time_per_layer
     cooldown_end_time = cooldown_start_time + cooldown_duration
     add_line(f"list_cool = DEFI_LIST_REEL(DEBUT={cooldown_start_time}, INTERVALLE=_F(JUSQU_A={cooldown_end_time}, PAS=50.0))")
-    add_line(f"list_res_cool = DEFI_LIST_REEL(DEBUT={cooldown_start_time}, INTERVALLE=_F(JUSQU_A={cooldown_end_time}, PAS=500.0), INCLURE_FIN='OUI')\n")
+    add_line(f"list_res_cool = DEFI_LIST_REEL(DEBUT={cooldown_start_time}, INTERVALLE=_F(JUSQU_A={cooldown_end_time}, PAS=500.0))\n")
     
     # --- Define model and material for the final, fully built part ---
     # The groups are the same as the last step of the loop
