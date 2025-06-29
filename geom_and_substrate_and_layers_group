@@ -131,8 +131,8 @@ if ADD_SUBSTRATE:
     if substrate_solid_ids:
         group = geompy.CreateGroup(Final_Partition, geompy.ShapeType["SOLID"])
         geompy.UnionIDs(group, substrate_solid_ids)
-        geompy.addToStudyInFather(Final_Partition, group, "substrate_volume")
-        print("Created volume group: 'substrate_volume'")
+        geompy.addToStudyInFather(Final_Partition, group, "substrate")
+        print("Created volume group: 'substrate'")
 
 part_solids = [s for s in all_solids_in_partition if geompy.PointCoordinates(geompy.MakeCDG(s))[2] >= part_z_min]
 layers_with_z = sorted([(geompy.PointCoordinates(geompy.MakeCDG(s))[2], s) for s in part_solids])
