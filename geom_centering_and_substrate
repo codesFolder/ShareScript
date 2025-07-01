@@ -1,0 +1,128 @@
+# =============================================================================
+#  SALOME SCRIPT: Position Geometry, Add Substrate, and Create Compound
+#
+#  - Imports a geometry file (STL or BREP).
+#  - Moves it so its center is at (0,0) in the XY plane and its base is at Z=0.
+#  - Creates a box-shaped substrate directly underneath the positioned geometry.
+#  - Builds a final Compound object containing both the geometry and the substrate.
+# =============================================================================
+
+import sys
+import salome
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+import GEOM
+from salome.geom import geomBuilder
+
+# --- 1. CONFIGURATION ---
+# Please edit these variables
+
+# The full path to your geometry file. Use forward slashes '/'.
+GEOMETRY_FILE_PATH = "C:/Users/DELL/Downloads/v2024/salome_meca/your_file.brep"
+
+# The type of your geometry file. Supported values: "STL", "BREP", "STEP".
+FILE_TYPE = "BREP"
+
+# The height (thickness) of the substrate box to be created below the geometry.
+SUBSTRATE_HEIGHT = 5
+
+# The extra margin to add around the geometry's footprint for the substrate size.
+# A value of 0 means the substrate has the exact same X/Y size as the geometry.
+SUBSTRATE_XY_MARGIN = 10
+
+
+# --- MAIN SCRIPT ---
+try:
+    print("--- Starting Geometry Positioning and Substrate Creation Script ---")
+    geompy = geomBuilder.New()
+
+    # =========================================================================
+    # --- 2. IMPORT GEOMETRY ---
+    # =========================================================================
+    print(f"Importing {FILE_TYPE} file: {GEOMETRY_FILE_PATH}")
+    part_solid = None
+    
+    if FILE_TYPE.upper() == "STL":
+        imported_stl = geompy.ImportSTL(GEOMETRY_FILE_PATH, False)
+        shell = geompy.MakeShell([imported_stl])
+        solid = geompy.MakeSolid([shell])
+        part_solid = geompy.RemoveExtraEdges(geompy.RemoveInternalFaces(solid))
+        print("STL successfully converted to a healed solid.")
+    elif FILE_TYPE.upper() in ["BREP", "STEP"]:
+        part_solid = geompy.ImportBREP(GEOMETRY_FILE_PATH)
+        print("BREP/STEP file successfully imported.")
+    else:
+        raise ValueError(f"Unsupported FILE_TYPE: '{FILE_TYPE}'.")
+
+    if part_solid is None:
+        raise RuntimeError(f"Failed to create a valid solid from the file.")
+    
+    # =========================================================================
+    # --- 3. POSITION THE GEOMETRY AT THE ORIGIN (Z>=0) ---
+    # =========================================================================
+    print("Positioning the main geometry...")
+    bbox = geompy.BoundingBox(part_solid)
+    x_min, x_max = bbox[0], bbox[1]
+    y_min, y_max = bbox[2], bbox[3]
+    z_min = bbox[4]
+
+    translation_dx = -((x_min + x_max) / 2.0)
+    translation_dy = -((y_min + y_max) / 2.0)
+    translation_dz = -z_min
+
+    positioned_geometry = geompy.MakeTranslation(part_solid, translation_dx, translation_dy, translation_dz)
+    print("Geometry positioned with its base at Z=0.")
+
+    # =========================================================================
+    # --- 4. CREATE THE SUBSTRATE BOX ---
+    # =========================================================================
+    print("Creating the substrate box...")
+    
+    # Get the bounding box of the *already positioned* geometry to define the substrate
+    bbox_positioned = geompy.BoundingBox(positioned_geometry)
+    pos_x_min, pos_x_max = bbox_positioned[0], bbox_positioned[1]
+    pos_y_min, pos_y_max = bbox_positioned[2], bbox_positioned[3]
+
+    # Define the substrate box coordinates using the configuration variables
+    # The top of the substrate is at Z=0, and it extends downwards by SUBSTRATE_HEIGHT
+    sub_x1 = pos_x_min - SUBSTRATE_XY_MARGIN
+    sub_y1 = pos_y_min - SUBSTRATE_XY_MARGIN
+    sub_z1 = -SUBSTRATE_HEIGHT 
+    
+    sub_x2 = pos_x_max + SUBSTRATE_XY_MARGIN
+    sub_y2 = pos_y_max + SUBSTRATE_XY_MARGIN
+    sub_z2 = 0 # Top face is at Z=0
+
+    substrate_box = geompy.MakeBox(sub_x1, sub_y1, sub_z1, sub_x2, sub_y2, sub_z2)
+    print(f"Substrate created with height {SUBSTRATE_HEIGHT} and XY margin {SUBSTRATE_XY_MARGIN}.")
+
+    # =========================================================================
+    # --- 5. BUILD THE FINAL COMPOUND ---
+    # =========================================================================
+    print("Building final compound object...")
+    
+    # A Compound groups shapes together without merging them.
+    final_assembly = geompy.MakeCompound([positioned_geometry, substrate_box])
+    
+    # Add the final object to the study for easy selection
+    geompy.addToStudy(final_assembly, "geometry_with_substrate")
+    
+    # Also add the individual components for clarity
+    geompy.addToStudyInFather(final_assembly, positioned_geometry, "geometry")
+    geompy.addToStudyInFather(final_assembly, substrate_box, "substrate")
+
+    print("\nFinal assembly 'geometry_with_substrate' created successfully.")
+    print("\nAll tasks completed.")
+
+except Exception as e:
+    print("\n--- SCRIPT FAILED ---")
+    import traceback
+    traceback.print_exc()
+
+finally:
+    # Update the view to show the new objects
+    if salome.sg.hasDesktop():
+        salome.sg.updateObjBrowser()
+    print("--- Script finished execution ---")
