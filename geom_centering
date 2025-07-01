@@ -1,0 +1,104 @@
+# =============================================================================
+#  SALOME SCRIPT: Position Geometry at Origin (Z>=0)
+#
+#  This script imports a geometry file and moves it so that its
+#  center is at (0,0) in the XY plane and its lowest point is at Z=0.
+# =============================================================================
+
+import sys
+import salome
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+import GEOM
+from salome.geom import geomBuilder
+
+# --- 1. CONFIGURATION ---
+# Please edit these two variables
+
+# The full path to your geometry file. Use forward slashes '/'.
+GEOMETRY_FILE_PATH = "C:/Users/DELL/Downloads/v2024/salome_meca/your_file.brep"
+
+# The type of your geometry file. Supported values: "STL", "BREP", "STEP".
+FILE_TYPE = "BREP"
+
+
+# --- MAIN SCRIPT ---
+try:
+    print("--- Starting Geometry Positioning Script ---")
+    geompy = geomBuilder.New()
+
+    # =========================================================================
+    # --- 2. IMPORT GEOMETRY ---
+    # =========================================================================
+    print(f"Importing {FILE_TYPE} file: {GEOMETRY_FILE_PATH}")
+    
+    part_solid = None
+    
+    if FILE_TYPE.upper() == "STL":
+        imported_stl = geompy.ImportSTL(GEOMETRY_FILE_PATH, False)
+        shell = geompy.MakeShell([imported_stl])
+        solid = geompy.MakeSolid([shell])
+        part_solid = geompy.RemoveExtraEdges(geompy.RemoveInternalFaces(solid))
+        print("STL successfully converted to a healed solid.")
+    elif FILE_TYPE.upper() in ["BREP", "STEP"]:
+        part_solid = geompy.ImportBREP(GEOMETRY_FILE_PATH)
+        print("BREP/STEP file successfully imported.")
+    else:
+        raise ValueError(f"Unsupported FILE_TYPE: '{FILE_TYPE}'.")
+
+    if part_solid is None:
+        raise RuntimeError(f"Failed to create a valid solid from the file.")
+    
+    # Add the original object to the study so you can see the "before" state
+    geompy.addToStudy(part_solid, 'original_geometry')
+
+    # =========================================================================
+    # --- 3. CALCULATE REQUIRED TRANSLATION ---
+    # =========================================================================
+    print("Calculating the required translation vector...")
+
+    # Get the bounding box of the original geometry.
+    # IMPORTANT: Salome's BoundingBox returns a tuple of (xmin, xmax, ymin, ymax, zmin, zmax)
+    bbox = geompy.BoundingBox(part_solid)
+    x_min, x_max = bbox[0], bbox[1]
+    y_min, y_max = bbox[2], bbox[3]
+    z_min = bbox[4]
+
+    # Calculate the current center in the XY plane
+    current_center_x = (x_min + x_max) / 2.0
+    current_center_y = (y_min + y_max) / 2.0
+    
+    # The required translation is the negative of the current position
+    translation_dx = -current_center_x
+    translation_dy = -current_center_y
+    translation_dz = -z_min
+
+    print(f"  - Current Center (X,Y): ({current_center_x:.3f}, {current_center_y:.3f})")
+    print(f"  - Current Minimum Z: {z_min:.3f}")
+    print(f"  - Required Translation Vector (dx, dy, dz): ({translation_dx:.3f}, {translation_dy:.3f}, {translation_dz:.3f})")
+
+    # =========================================================================
+    # --- 4. PERFORM TRANSLATION ---
+    # =========================================================================
+    print("Applying translation to position the geometry...")
+
+    positioned_geometry = geompy.MakeTranslation(part_solid, translation_dx, translation_dy, translation_dz)
+    
+    # Add the final, moved object to the study
+    geompy.addToStudy(positioned_geometry, 'positioned_geometry')
+
+    print("\nGeometry successfully positioned at the origin with its base at Z=0.")
+    print("\nAll tasks completed successfully.")
+
+except Exception as e:
+    print("\n--- SCRIPT FAILED ---")
+    import traceback
+    traceback.print_exc()
+
+finally:
+    # This part always runs, even if the script fails, to update the view
+    if salome.sg.hasDesktop():
+        salome.sg.updateObjBrowser()
+    print("--- Script finished execution ---")
