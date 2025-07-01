@@ -1,0 +1,166 @@
+# =============================================================================
+#  SALOME SCRIPT: FULL WORKFLOW (POSITION, SUBSTRATE, PARTITION, GROUP)
+#
+#  - Imports a geometry file.
+#  - Positions it with its base at Z=0.
+#  - Creates a configurable substrate box underneath.
+#  - Fuses the geometry and substrate into one object.
+#  - Partitions the fused object into layers and a substrate.
+#  - Creates named groups: 'layer1', 'layer2'..., and 'substrate'.
+# =============================================================================
+
+import sys
+import salome
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+import GEOM
+from salome.geom import geomBuilder
+import math
+
+# --- 1. CONFIGURATION ---
+# Please edit these variables
+
+# The full path to your geometry file. Use forward slashes '/'.
+GEOMETRY_FILE_PATH = "C:/Users/DELL/Downloads/v2024/salome_meca/your_file.brep"
+
+# The type of your geometry file. Supported values: "STL", "BREP", "STEP".
+FILE_TYPE = "BREP"
+
+# The desired number of layers/divisions TO CREATE for the main geometry.
+NUMBER_OF_DIVISIONS = 10
+
+# The height (thickness) of the substrate box.
+SUBSTRATE_HEIGHT = 5
+
+# The extra margin to add around the geometry's footprint for the substrate size.
+SUBSTRATE_XY_MARGIN = 10
+
+
+# --- MAIN SCRIPT ---
+try:
+    print("--- Starting Full Workflow Script ---")
+    geompy = geomBuilder.New()
+
+    # =========================================================================
+    # --- 2. IMPORT AND POSITION GEOMETRY ---
+    # =========================================================================
+    print(f"Importing {FILE_TYPE} file: {GEOMETRY_FILE_PATH}")
+    part_solid = None
+    
+    if FILE_TYPE.upper() == "STL":
+        imported_stl = geompy.ImportSTL(GEOMETRY_FILE_PATH, False)
+        shell = geompy.MakeShell([imported_stl])
+        solid = geompy.MakeSolid([shell])
+        part_solid = geompy.RemoveExtraEdges(geompy.RemoveInternalFaces(solid))
+    elif FILE_TYPE.upper() in ["BREP", "STEP"]:
+        part_solid = geompy.ImportBREP(GEOMETRY_FILE_PATH)
+    else:
+        raise ValueError(f"Unsupported FILE_TYPE: '{FILE_TYPE}'.")
+
+    if part_solid is None:
+        raise RuntimeError(f"Failed to create a valid solid from the file.")
+
+    print("Positioning the main geometry...")
+    bbox = geompy.BoundingBox(part_solid)
+    translation_dx = -((bbox[0] + bbox[1]) / 2.0)
+    translation_dy = -((bbox[2] + bbox[3]) / 2.0)
+    translation_dz = -bbox[4]
+    positioned_geometry = geompy.MakeTranslation(part_solid, translation_dx, translation_dy, translation_dz)
+    print("Geometry positioned with its base at Z=0.")
+    
+    # =========================================================================
+    # --- 3. CREATE SUBSTRATE AND FUSE ASSEMBLY ---
+    # =========================================================================
+    print("Creating the substrate box...")
+    bbox_positioned = geompy.BoundingBox(positioned_geometry)
+    sub_x1 = bbox_positioned[0] - SUBSTRATE_XY_MARGIN
+    sub_y1 = bbox_positioned[2] - SUBSTRATE_XY_MARGIN
+    sub_z1 = -SUBSTRATE_HEIGHT
+    sub_x2 = bbox_positioned[1] + SUBSTRATE_XY_MARGIN
+    sub_y2 = bbox_positioned[3] + SUBSTRATE_XY_MARGIN
+    sub_z2 = 0
+    substrate_box = geompy.MakeBox(sub_x1, sub_y1, sub_z1, sub_x2, sub_y2, sub_z2)
+
+    print("Fusing geometry and substrate into a single object...")
+    # MakeFuse is more robust for partitioning than a Compound.
+    fused_assembly = geompy.MakeFuse(positioned_geometry, substrate_box)
+    geompy.addToStudy(fused_assembly, "fused_assembly")
+    
+    # =========================================================================
+    # --- 4. PARTITION THE FUSED ASSEMBLY ---
+    # =========================================================================
+    print("Partitioning the fused assembly...")
+    geometry_height = bbox_positioned[5] # Z_max of the positioned part
+    layer_thickness = geometry_height / NUMBER_OF_DIVISIONS
+
+    # --- Create cutting planes ---
+    plane_size = max(sub_x2-sub_x1, sub_y2-sub_y1) * 1.2
+    plane_proto = geompy.MakePlaneLCS(None, plane_size, plane_size)
+    
+    cutting_tools = []
+    # Add a plane at Z=0 to guarantee the separation between substrate and the first layer
+    cutting_tools.append(geompy.MakeTranslation(plane_proto, 0, 0, 0))
+    # Add planes for all the other layers
+    for i in range(1, NUMBER_OF_DIVISIONS):
+        z_pos = i * layer_thickness
+        cutting_tools.append(geompy.MakeTranslation(plane_proto, 0, 0, z_pos))
+
+    Partition_1 = geompy.MakePartition([fused_assembly], cutting_tools, [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+    if Partition_1 is None:
+        raise RuntimeError("Partition operation failed.")
+    geompy.addToStudy(Partition_1, 'Partition_1')
+    print("Partition complete.")
+
+    # =========================================================================
+    # --- 5. IDENTIFY AND GROUP THE SUB-SHAPES ---
+    # =========================================================================
+    print("Creating final groups...")
+    all_solids = geompy.SubShapeAll(Partition_1, geompy.ShapeType["SOLID"])
+    
+    layer_solids = []
+    substrate_solid = None
+
+    # Identify each piece by the Z-coordinate of its center
+    for solid in all_solids:
+        center_z = geompy.PointCoordinates(geompy.MakeCDG(solid))[2]
+        if center_z > -1e-9: # If center is at or above Z=0, it's a layer
+            layer_solids.append(solid)
+        else: # If center is below Z=0, it's the substrate
+            substrate_solid = solid
+    
+    # Create the substrate group
+    if substrate_solid:
+        substrate_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["SOLID"])
+        sub_shape_id = geompy.GetSubShapeID(Partition_1, substrate_solid)
+        geompy.UnionIDs(substrate_group, [sub_shape_id])
+        geompy.addToStudyInFather(Partition_1, substrate_group, "substrate")
+        print("  - Created group: substrate")
+    else:
+        print("  - WARNING: No substrate body was found after partitioning.")
+
+    # Sort the layers by height and create their groups
+    if layer_solids:
+        sorted_layers = sorted(layer_solids, key=lambda s: geompy.PointCoordinates(geompy.MakeCDG(s))[2])
+        for i, layer_shape in enumerate(sorted_layers):
+            group_name = f"layer{i + 1}"
+            layer_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["SOLID"])
+            sub_shape_id = geompy.GetSubShapeID(Partition_1, layer_shape)
+            geompy.UnionIDs(layer_group, [sub_shape_id])
+            geompy.addToStudyInFather(Partition_1, layer_group, group_name)
+            print(f"  - Created group: {group_name}")
+    else:
+        print("  - WARNING: No layer bodies were found after partitioning.")
+
+    print("\nAll tasks completed successfully.")
+
+except Exception as e:
+    print("\n--- SCRIPT FAILED ---")
+    import traceback
+    traceback.print_exc()
+
+finally:
+    if salome.sg.hasDesktop():
+        salome.sg.updateObjBrowser()
+    print("--- Script finished execution ---")
