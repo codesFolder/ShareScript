@@ -1,0 +1,146 @@
+# =============================================================================
+#  SALOME SCRIPT: Import and Layer Geometry (FINAL VERSION)
+#  - Imports an STL or BREP file.
+#  - Automatically calculates a very large plane size for robust partitioning.
+#  - Partitions the solid into a specified number of layers in its original position.
+#  - Creates a volume group for each layer named 'layer1', 'layer2', etc.
+# =============================================================================
+
+# Please run this using File > Load Script... in Salome.
+
+import sys
+import salome
+salome.salome_init()
+import salome_notebook
+notebook = salome_notebook.NoteBook()
+
+import GEOM
+from salome.geom import geomBuilder
+import math
+
+# --- 1. CONFIGURATION ---
+# Please edit these three variables
+
+# The full path to your geometry file. Use forward slashes '/'.
+GEOMETRY_FILE_PATH = "C:/Users/DELL/Downloads/v2024/salome_meca/Box_1.brep"
+
+# The type of your geometry file. Supported values: "STL", "BREP", "STEP".
+FILE_TYPE = "BREP"
+
+# The desired number of layers/divisions.
+NUMBER_OF_DIVISIONS = 10
+
+
+# --- MAIN SCRIPT ---
+
+# Wrap the entire workflow in a try/except block for clear error messages
+try:
+    print("--- Starting script ---")
+    geompy = geomBuilder.New()
+
+    # =========================================================================
+    # --- 2. IMPORT GEOMETRY BASED ON FILE TYPE ---
+    # =========================================================================
+    print(f"Importing {FILE_TYPE} file: {GEOMETRY_FILE_PATH}")
+    
+    part_solid = None
+    
+    if FILE_TYPE.upper() == "STL":
+        imported_stl = geompy.ImportSTL(GEOMETRY_FILE_PATH, False)
+        shell = geompy.MakeShell([imported_stl])
+        solid = geompy.MakeSolid([shell])
+        solid = geompy.RemoveInternalFaces(solid)
+        part_solid = geompy.RemoveExtraEdges(solid)
+        print("STL successfully converted to a healed solid.")
+
+    elif FILE_TYPE.upper() in ["BREP", "STEP"]:
+        part_solid = geompy.ImportBREP(GEOMETRY_FILE_PATH)
+        print("BREP/STEP file successfully imported.")
+
+    else:
+        raise ValueError(f"Unsupported FILE_TYPE: '{FILE_TYPE}'. Please use 'STL', 'BREP', or 'STEP'.")
+
+    if part_solid is None:
+        raise RuntimeError(f"Failed to create a valid solid from the file. The file may be damaged or empty.")
+    
+    geompy.addToStudy(part_solid, 'original_imported_solid')
+    
+    # =========================================================================
+    # --- 3. PARTITION THE SOLID INTO LAYERS (IN ORIGINAL POSITION) ---
+    # =========================================================================
+    bbox = geompy.BoundingBox(part_solid)
+    part_z_min = bbox[2] 
+    part_z_max = bbox[5]
+    total_height = part_z_max - part_z_min
+    layer_thickness = total_height / NUMBER_OF_DIVISIONS
+    
+    print(f"Total height of part: {total_height:.3f} mm")
+    print(f"Partitioning solid into {NUMBER_OF_DIVISIONS} layers of thickness {layer_thickness:.3f} mm...")
+
+    # --- Create cutting planes ---
+    print("Creating cutting planes...")
+    
+    # NEW: Automatically calculate a massive plane size for guaranteed partitioning.
+    dx = bbox[3] - bbox[0]  # x_max - x_min
+    dy = bbox[4] - bbox[1]  # y_max - y_min
+    max_dimension = max(dx, dy)
+    plane_size = max_dimension * 10 # 10x the largest dimension (width or depth)
+    print(f"Calculated dynamic plane size (10x max dimension): {plane_size:.2f}")
+    
+    plane_proto = geompy.MakePlaneLCS(None, plane_size, plane_size)
+
+    cutting_tools = []
+    for i in range(1, NUMBER_OF_DIVISIONS):
+        z_pos = part_z_min + (i * layer_thickness)
+        plane = geompy.MakeTranslation(plane_proto, 0, 0, z_pos)
+        cutting_tools.append(plane)
+        
+    if cutting_tools:
+        all_planes_compound = geompy.MakeCompound(cutting_tools)
+        geompy.addToStudy(all_planes_compound, 'Cutting_Planes')
+        print("Added 'Cutting_Planes' object to the study for visualization.")
+
+    # Perform the partition
+    Partition_1 = geompy.MakePartition([part_solid], cutting_tools, [], [], geompy.ShapeType["SOLID"], 0, [], 0)
+    
+    if Partition_1 is None:
+        raise RuntimeError("Partition operation failed. The geometry may be too complex or contain errors that prevent slicing.")
+
+    geompy.addToStudy(Partition_1, 'Partition_1')
+    print("Partition complete.")
+
+    # =========================================================================
+    # --- 4. CREATE VOLUME GROUPS FOR EACH LAYER ---
+    # =========================================================================
+    print("Creating volume groups for each layer...")
+    
+    all_solids_in_partition = geompy.SubShapeAll(Partition_1, geompy.ShapeType["SOLID"])
+    if not all_solids_in_partition:
+        raise RuntimeError("Partition resulted in zero solid bodies. Check the 'Cutting_Planes' and 'original_imported_solid' objects to ensure they intersect correctly.")
+
+    sorted_layers = sorted(
+        all_solids_in_partition,
+        key=lambda s: geompy.PointCoordinates(geompy.MakeCDG(s))[2] # Index 2 is the Z-coordinate
+    )
+
+    for i, layer_shape in enumerate(sorted_layers):
+        # UPDATED: Layer name no longer has an underscore.
+        group_name = f"layer{i + 1}"
+        layer_group = geompy.CreateGroup(Partition_1, geompy.ShapeType["SOLID"])
+        sub_shape_id = geompy.GetSubShapeID(Partition_1, layer_shape)
+        geompy.UnionIDs(layer_group, [sub_shape_id])
+        geompy.addToStudyInFather(Partition_1, layer_group, group_name)
+        
+        print(f"Created group: {group_name}")
+    
+    print("\nAll tasks completed successfully.")
+
+except Exception as e:
+    print("\n--- SCRIPT FAILED ---")
+    import traceback
+    traceback.print_exc()
+
+finally:
+    if salome.sg.hasDesktop():
+        salome.sg.updateObjBrowser()
+    print("--- Script finished execution ---")
